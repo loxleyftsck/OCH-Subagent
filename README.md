@@ -233,32 +233,14 @@ pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-### 4. Configure Environment Variables
+### 4. Configure Environment
 
-Create a `.env` file based on `.env.example`:
+Copy the environment template file and update it with your target endpoint and model credentials:
 
 ```bash
 cp .env.example .env
 ```
 
-Edit `.env` with your API configuration:
-
-```ini
-API_BASE_URL=http://10.7.1.21/v1
-API_KEY=sk-your_api_key_here
-
-OCR_MODEL=ocr-lighton
-TEXT_MODEL=qwen-35b
-CHAT_MODEL=qwen-35b
-ROUTER_MODEL=nemotron-35
-
-TEAM_SHARED_MODE=true
-MAX_CONCURRENT_REQUESTS=1
-OCR_INTERVAL_SECONDS=30.0
-MAX_DAILY_LOCAL_OCR_CALLS=25
-ENABLE_LOCAL_CACHE=true
-MOCK_MODE=false
-```
 
 ### 5. Launch the Application
 
