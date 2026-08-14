@@ -1,13 +1,15 @@
 import json
+import re
 import logging
 from typing import Dict, Any, Optional
+
 from src.agents.base_agent import BaseSubagent
 from src.client.base_client import base_client
 from src.config import settings
 from src.cache.local_cache import local_cache
-from src.pipeline.schemas import DocumentAnalysisSchema
 
 logger = logging.getLogger("parser_agent")
+
 
 PARSER_SYSTEM_PROMPT = """You are an expert Document & Receipt Intelligence AI.
 Analyze the OCR raw text and extract structured information strictly in JSON format.
@@ -83,37 +85,81 @@ class ParserAgent(BaseSubagent):
 
         content = response["choices"][0]["message"]["content"]
         
-        # Robust JSON extraction
-        cleaned_json_str = content.strip()
-        if "```json" in cleaned_json_str:
-            cleaned_json_str = cleaned_json_str.split("```json")[1].split("```")[0].strip()
-        elif "```" in cleaned_json_str:
-            cleaned_json_str = cleaned_json_str.split("```")[1].split("```")[0].strip()
-        else:
-            # Find first '{' and last '}'
-            start_idx = cleaned_json_str.find("{")
-            end_idx = cleaned_json_str.rfind("}")
-            if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
-                cleaned_json_str = cleaned_json_str[start_idx:end_idx + 1]
+        candidates = []
 
-        try:
-            parsed_data = json.loads(cleaned_json_str)
+        # 1. Extract all code fence JSON blocks (greedy & non-greedy)
+        for m in re.finditer(r"```(?:json)?\s*([\s\S]*?)\s*```", content):
+            fence_content = m.group(1).strip()
+            # Find outermost balanced { ... } within fence
+            start_i = fence_content.find("{")
+            end_i = fence_content.rfind("}")
+            if start_i != -1 and end_i > start_i:
+                block = fence_content[start_i:end_i + 1]
+                try:
+                    candidates.append(json.loads(block))
+                except Exception:
+                    try:
+                        fixed = re.sub(r",\s*([\]}])", r"\1", block)
+                        candidates.append(json.loads(fixed))
+                    except Exception:
+                        pass
+
+        # 2. Extract balanced curly brace blocks from whole content
+        for start_idx in [i for i, c in enumerate(content) if c == "{"]:
+            open_b = 0
+            for end_idx in range(start_idx, len(content)):
+                if content[end_idx] == "{":
+                    open_b += 1
+                elif content[end_idx] == "}":
+                    open_b -= 1
+                    if open_b == 0:
+                        block = content[start_idx:end_idx + 1].strip()
+                        try:
+                            candidates.append(json.loads(block))
+                        except Exception:
+                            try:
+                                fixed = re.sub(r",\s*([\]}])", r"\1", block)
+                                candidates.append(json.loads(fixed))
+                            except Exception:
+                                pass
+                        break
+
+        # Pick candidate with the most keys (root document object)
+        parsed_data = None
+        if candidates:
+            candidates.sort(key=lambda d: len(d.keys()) if isinstance(d, dict) else 0, reverse=True)
+            parsed_data = candidates[0]
+
+
+        if parsed_data:
             validated = parsed_data
-        except Exception as e:
-            # If trailing comma or minor JSON defect, attempt basic cleanup
-            try:
-                import re
-                fixed_json = re.sub(r",\s*([\]}])", r"\1", cleaned_json_str)
-                validated = json.loads(fixed_json)
-            except Exception:
-                logger.warning(f"⚠️ JSON parsing error: {e}. Falling back to default format.")
-                validated = {
-                    "document_title": "Parsed Receipt / Document",
-                    "document_type": "Struk Belanja / Receipt",
-                    "merchant_name": "INDOMART SUPERMARKET" if "INDOMART" in raw_text else "Toko / Merchant",
-                    "total_amount": 127595 if "127.595" in raw_text else None,
-                    "summary": content[:300]
-                }
+        else:
+            logger.warning("⚠️ No valid JSON block found in LLM output. Falling back to dynamic heuristic extraction.")
+            lines = [l.strip() for l in raw_text.split("\n") if l.strip() and not l.strip().startswith(("-", "=", "#"))]
+            first_line = lines[0] if lines else "Parsed Document"
+            
+            # Heuristic receipt detection
+            is_rcpt = any(kw in raw_text.lower() for kw in ["struk", "receipt", "total", "subtotal", "cash", "kasir", "change", "tax", "vat"])
+            
+            total_val = None
+            total_matches = re.findall(r"(?:total|amount|grand total|bayar)\s*[:=]?\s*(?:[€$£]|rp\.?)?\s*([\d\.,]+)", raw_text, re.IGNORECASE)
+            if total_matches:
+                try:
+                    clean_num = total_matches[-1].replace(".", "").replace(",", ".")
+                    total_val = float(clean_num)
+                except Exception:
+                    pass
+
+            validated = {
+                "document_type": "Struk Belanja / Receipt" if is_rcpt else "Generic Document",
+                "merchant_name": first_line if is_rcpt else None,
+                "document_title": first_line if not is_rcpt else "Struk Belanja",
+                "total_amount": total_val,
+                "summary": (content[:300] if content else raw_text[:300])
+            }
+
+
+
 
         # Update cache with structured JSON
         if image_hash:
