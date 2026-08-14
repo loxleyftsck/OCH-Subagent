@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OCH-Subagent | Document Intelligence & OCR System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- TOP STATUS & SAFETY BAR -->
+        <header class="top-bar">
+            <div class="brand">
+                <div class="logo-icon">⚡</div>
+                <div class="brand-text">
+                    <h1>OCH-Subagent</h1>
+                    <span class="subtext">Document Intelligence & Multi-Agent OCR</span>
+                </div>
+            </div>
+
+            <!-- Real-time Quota & Team Safety Widget -->
+            <div class="safety-widget" id="safetyWidget">
+                <div class="safety-item">
+                    <span class="label">Team Shared Safety</span>
+                    <span class="badge badge-success" id="teamModeBadge">7-Person Shield ON</span>
+                </div>
+                <div class="safety-item">
+                    <span class="label">OCR Cooldown (30s)</span>
+                    <span class="badge badge-cooldown" id="ocrCooldownBadge">Ready 🟢</span>
+                </div>
+                <div class="safety-item">
+                    <span class="label">Concurrency Slot</span>
+                    <span class="badge badge-slot" id="slotBadge">0 / 1 Active</span>
+                </div>
+                <div class="safety-item">
+                    <span class="label">Daily Local OCR Calls</span>
+                    <span class="badge badge-usage" id="dailyUsageBadge">0 / 25 Calls</span>
+                </div>
+            </div>
+
+            <!-- Action Controls -->
+            <div class="top-actions">
+                <button class="btn btn-secondary" id="btnDownloadHF" title="Download sample Row 4 from Hugging Face BEE-spoke-data/govdocs1-pdf-source">
+                    📥 Download HF Row 4
+                </button>
+                <label class="btn btn-outline" for="fileUploadInput">
+                    📤 Upload PDF / Image
+                </label>
+                <input type="file" id="fileUploadInput" accept=".pdf,.png,.jpg,.jpeg,.webp" style="display:none;">
+            </div>
+        </header>
+
+        <!-- MAIN 3-PANEL WORKSPACE -->
+        <main class="workspace-grid">
+            <!-- PANEL 1: PDF VIEWER -->
+            <section class="panel panel-pdf">
+                <div class="panel-header">
+                    <div class="panel-title">
+                        <span class="icon">📑</span>
+                        <h2>Document Viewer</h2>
+                    </div>
+                    <div class="doc-selector-wrapper">
+                        <select id="docSelect" class="select-input">
+                            <option value="">Loading documents...</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="doc-toolbar">
+                    <div class="page-controls">
+                        <button class="btn-icon" id="btnPrevPage" title="Previous Page">◀</button>
+                        <span class="page-indicator" id="pageIndicator">Page 1 / 1</span>
+                        <button class="btn-icon" id="btnNextPage" title="Next Page">▶</button>
+                    </div>
+                    <div class="zoom-controls">
+                        <button class="btn-icon" id="btnZoomOut" title="Zoom Out">−</button>
+                        <span class="zoom-level" id="zoomLevel">100%</span>
+                        <button class="btn-icon" id="btnZoomIn" title="Zoom In">+</button>
+                    </div>
+                    <button class="btn btn-primary" id="btnRunOCR">
+                        ⚡ Ekstrak OCR
+                    </button>
+                </div>
+
+                <div class="pdf-canvas-container" id="pdfCanvasContainer">
+                    <div class="pdf-loading-overlay" id="pdfLoading" style="display: none;">
+                        <div class="spinner"></div>
+                        <p id="pdfLoadingText">Rendering Page...</p>
+                    </div>
+                    <img id="pdfPageImage" class="pdf-image" alt="Rendered Page" style="display: none;">
+                    <div id="pdfPlaceholder" class="pdf-placeholder">
+                        <div class="placeholder-icon">📄</div>
+                        <p>Pilih dokumen atau klik <strong>"Download HF Row 4"</strong> untuk memulai</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- PANEL 2: HASIL OCR & STRUCTURE INSPECTOR -->
+            <section class="panel panel-ocr">
+                <div class="panel-header">
+                    <div class="panel-title">
+                        <span class="icon">🔍</span>
+                        <h2>Hasil OCR & Inspector</h2>
+                    </div>
+                    <div class="cache-badge-wrapper">
+                        <span class="cache-badge" id="ocrCacheBadge" style="display:none;">⚡ Local Cache (0 Cost)</span>
+                    </div>
+                </div>
+
+                <div class="tab-header">
+                    <button class="tab-btn active" data-tab="tab-structured">Structured JSON</button>
+                    <button class="tab-btn" data-tab="tab-raw">Raw OCR Text</button>
+                    <button class="tab-btn" data-tab="tab-meta">Metadata & Tokens</button>
+                </div>
+
+                <div class="tab-content-container">
+                    <!-- Tab Structured -->
+                    <div class="tab-pane active" id="tab-structured">
+                        <div class="structured-view" id="structuredView">
+                            <div class="empty-state">
+                                <span class="empty-icon">🧩</span>
+                                <p>Klik <strong>"Ekstrak OCR"</strong> untuk memproses teks & struktur JSON melalui subagent</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tab Raw Text -->
+                    <div class="tab-pane" id="tab-raw">
+                        <div class="raw-text-toolbar">
+                            <span class="raw-stats" id="rawStats">0 Karakter | 0 Baris</span>
+                            <button class="btn-copy" id="btnCopyRaw">📋 Copy Text</button>
+                        </div>
+                        <textarea id="rawTextOutput" class="raw-text-area" readonly placeholder="Hasil raw text dari model ocr-lighton akan muncul di sini..."></textarea>
+                    </div>
+
+                    <!-- Tab Metadata -->
+                    <div class="tab-pane" id="tab-meta">
+                        <div class="meta-grid" id="metaGrid">
+                            <div class="meta-card">
+                                <span class="meta-label">Model OCR</span>
+                                <span class="meta-val" id="metaModel">ocr-lighton</span>
+                            </div>
+                            <div class="meta-card">
+                                <span class="meta-label">Image SHA-256 Hash</span>
+                                <span class="meta-val hash-val" id="metaHash">-</span>
+                            </div>
+                            <div class="meta-card">
+                                <span class="meta-label">Status Kuota</span>
+                                <span class="meta-val" id="metaCacheStatus">-</span>
+                            </div>
+                            <div class="meta-card">
+                                <span class="meta-label">Estimasi Token</span>
+                                <span class="meta-val" id="metaTokens">0 Tokens</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- PANEL 3: INTERACTIVE SUBAGENT CHAT -->
+            <section class="panel panel-chat">
+                <div class="panel-header">
+                    <div class="panel-title">
+                        <span class="icon">💬</span>
+                        <h2>Subagent Chat</h2>
+                    </div>
+                    <div class="chat-model-select">
+                        <select id="chatModelSelect" class="select-input select-sm">
+                            <option value="qwen-35b">qwen-35b (Reasoning)</option>
+                            <option value="nemotron-35">nemotron-35 (Fast)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="chat-messages" id="chatMessages">
+                    <div class="chat-message message-system">
+                        <div class="message-bubble">
+                            👋 Halo! Saya asisten subagent dokumen Anda. Tanyakan apa saja mengenai isi dokumen/PDF yang sedang dibuka.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Prompts -->
+                <div class="quick-prompts">
+                    <button class="quick-btn" data-prompt="Rangkum isi dokumen ini secara singkat dan jelas.">📝 Rangkum</button>
+                    <button class="quick-btn" data-prompt="Sebutkan semua entitas, tanggal, dan nomor referensi penting.">📌 Entitas Penting</button>
+                    <button class="quick-btn" data-prompt="Apakah ada angka total, biaya, atau nominal penting di dokumen ini?">💰 Cek Biaya/Total</button>
+                </div>
+
+                <!-- Chat Input Area -->
+                <form class="chat-input-form" id="chatForm">
+                    <input type="text" id="chatInput" class="chat-input" placeholder="Ketik pertanyaan terkait dokumen..." autocomplete="off">
+                    <button type="submit" class="btn btn-primary btn-send" id="btnSendChat">
+                        <span>Kirim</span> ➔
+                    </button>
+                </form>
+            </section>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
