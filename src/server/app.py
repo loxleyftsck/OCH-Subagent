@@ -327,6 +327,88 @@ async def chat_with_document(request: ChatRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+from fastapi.responses import StreamingResponse
+import json
+
+@app.post("/api/chat/stream")
+async def chat_with_document_stream(request: ChatRequest):
+    """Real-time SSE token streaming document Q&A."""
+    file_path = settings.PDF_DIR / request.pdf_name
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail=f"Dokumen '{request.pdf_name}' tidak ditemukan.")
+
+    retrieval_mode = request.retrieval_mode or "hybrid_rag"
+    user_query = ""
+    for msg in reversed(request.messages):
+        if msg.role == "user":
+            user_query = msg.content
+            break
+
+    doc_context = ""
+    citations_data = []
+
+    if retrieval_mode == "agentic_graph":
+        from src.rag.agentic_graph_rag import agentic_graph_rag
+        graph_res = agentic_graph_rag.execute_agentic_pipeline(file_path, user_query, top_k=4)
+        doc_context = graph_res.final_grounded_context
+        citations_data = [
+            {
+                "chunk_id": c.chunk_id,
+                "page_number": c.page_number,
+                "text_snippet": c.text_snippet,
+                "score": c.score,
+                "method": "Agentic GraphRAG",
+                "section_title": c.section_title
+            }
+            for c in graph_res.retrieval_citations
+        ]
+    else:
+        mode_key = "dense" if retrieval_mode == "dense_rag" else "hybrid"
+        rag_res = hybrid_retriever.retrieve(file_path, user_query, mode=mode_key, top_k=4)
+        doc_context = rag_res.combined_context
+        citations_data = [
+            {
+                "chunk_id": c.chunk_id,
+                "page_number": c.page_number,
+                "text_snippet": c.text_snippet,
+                "score": c.score,
+                "method": c.method,
+                "section_title": c.section_title
+            }
+            for c in rag_res.citations
+        ]
+
+    async def sse_generator():
+        try:
+            # First send citation metadata
+            yield f"data: {json.dumps({'type': 'citations', 'citations': citations_data})}\n\n"
+            
+            # Stream tokens
+            async for token in chat_agent.stream_process(
+                messages=[{"role": m.role, "content": m.content} for m in request.messages],
+                document_text=doc_context,
+                model_override=request.model
+            ):
+                yield f"data: {json.dumps({'type': 'token', 'token': token})}\n\n"
+            
+            yield f"data: {json.dumps({'type': 'done'})}\n\n"
+        except Exception as err:
+            logger.error(f"Error in SSE stream: {err}", exc_info=True)
+            yield f"data: {json.dumps({'type': 'token', 'token': f' [Terjadi kendala: {err}]'})}\n\n"
+            yield f"data: {json.dumps({'type': 'done'})}\n\n"
+
+    return StreamingResponse(
+        sse_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"
+        }
+    )
+
+
+
 # Static files mount
 web_dir = settings.BASE_DIR / "web"
 web_dir.mkdir(parents=True, exist_ok=True)

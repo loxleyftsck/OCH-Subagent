@@ -58,15 +58,24 @@
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                             <polyline points="7 10 12 15 17 10"></polyline>
-                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
                         </svg>
                         <span>Export</span>
                         <svg style="width:12px;height:12px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
                     </button>
                     <div class="dropdown-menu" id="exportMenu">
-                        <button class="dropdown-item" id="btnExportJSON">📄 Export Structured JSON</button>
-                        <button class="dropdown-item" id="btnExportText">📝 Export Raw Text</button>
-                        <button class="dropdown-item" id="btnExportMarkdown">📑 Export Markdown Report</button>
+                        <button class="dropdown-item" id="btnExportJSON">
+                            <svg class="item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+                            <span>Export Structured JSON</span>
+                        </button>
+                        <button class="dropdown-item" id="btnExportText">
+                            <svg class="item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="21" y1="10" x2="3" y2="10"></line><line x1="21" y1="6" x2="3" y2="6"></line><line x1="21" y1="14" x2="3" y2="14"></line><line x1="21" y1="18" x2="3" y2="18"></line></svg>
+                            <span>Export Raw Text</span>
+                        </button>
+                        <button class="dropdown-item" id="btnExportMarkdown">
+                            <svg class="item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><path d="M9 15l2 2 4-4"></path></svg>
+                            <span>Export Markdown Report</span>
+                        </button>
                     </div>
                 </div>
 
@@ -126,6 +135,20 @@
                         <div class="pdf-canvas-wrapper" id="pdfCanvasWrapper">
                             <img id="pdfPageImage" class="rendered-pdf-image" alt="Rendered PDF Page" style="display:none;">
                             <div class="pdf-highlight-overlay" id="pdfHighlightOverlay"></div>
+                            <div class="selection-tooltip" id="selectionTooltip" style="display:none;">
+                                <button class="btn-sel-action" id="btnAskSelection" title="Ajukan pertanyaan AI terkait teks ini">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                                    <span>Jelaskan Bagian Ini</span>
+                                </button>
+                                <button class="btn-sel-action" id="btnSummarizeSelection" title="Ringkas pasal yang dipilih">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="21" y1="10" x2="3" y2="10"></line><line x1="21" y1="6" x2="3" y2="6"></line><line x1="21" y1="14" x2="3" y2="14"></line></svg>
+                                    <span>Ringkas</span>
+                                </button>
+                                <button class="btn-sel-action" id="btnCopySelection" title="Salin teks kutipan">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                    <span>Salin</span>
+                                </button>
+                            </div>
                             <div id="pdfPlaceholder" class="viewport-placeholder">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
@@ -163,7 +186,9 @@
                         <button class="analysis-tab active" data-atab="jawaban">Jawaban AI</button>
                         <button class="analysis-tab" data-atab="ringkasan">Ringkasan</button>
                         <button class="analysis-tab" data-atab="poin_penting">Poin Penting</button>
+                        <button class="analysis-tab" data-atab="graf">Graf Hierarki</button>
                     </div>
+
 
                     <div class="analysis-scroll-area">
                         
@@ -338,11 +363,27 @@
                                             <p>Korban penangkapan atau penahanan tanpa alasan sah berhak menuntut rehabilitasi dan ganti kerugian.</p>
                                         </div>
                                     </div>
+                        <!-- TAB 4: GRAF HIERARKI HUKUM -->
+                        <div class="analysis-pane" id="pane-graf">
+                            <div class="analysis-article">
+                                <h3 class="article-title">Graf Hierarki & Relasi Pasal</h3>
+                                <p class="article-intro">Visualisasi relasi keterhubungan hierarkis antar-pasal yang dibangun oleh <strong>Agentic GraphRAG</strong>.</p>
+                                
+                                <div class="graph-viewer-container" id="graphViewerContainer">
+                                    <svg class="legal-graph-svg" id="legalGraphSvg" viewBox="0 0 540 280">
+                                        <!-- Interactive SVG graph elements will be rendered here -->
+                                    </svg>
+                                </div>
+                                <div class="graph-legend">
+                                    <span class="legend-item"><span class="legend-dot dot-primary"></span> Simpul Utama</span>
+                                    <span class="legend-item"><span class="legend-dot dot-sub"></span> Pasal Rujukan</span>
+                                    <span class="legend-item"><span class="legend-dot dot-root"></span> UU Induk</span>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </section>
+
 
                 <!-- COLUMN 3: AI ASSISTANT (CHAT CONVERSATION) -->
                 <section class="column-panel panel-assistant" id="panelAssistant">
@@ -355,14 +396,14 @@
                         </div>
                     </div>
 
-                    <!-- LLM MODEL & RETRIEVAL MODE SELECTORS -->
+                    <!-- LLM MODEL & RETRIEVAL MODE SELECTORS (NO EMOJIS, CLEAN ENTERPRISE) -->
                     <div class="mode-dropdown-container">
                         <div class="selector-row">
                             <label class="sel-label">Model LLM:</label>
                             <div class="mode-select-wrap">
                                 <select id="llmModelSelect" class="mode-select" title="Pilih Model Bahasa Besar (LLM)">
-                                    <option value="qwen-35b">🧠 Qwen 3.5 (Deep Legal Reasoning)</option>
-                                    <option value="nemotron-35">⚡ Nemotron 3.5 (High Speed Response)</option>
+                                    <option value="qwen-35b">Qwen 3.5 (Deep Legal Reasoning)</option>
+                                    <option value="nemotron-35">Nemotron 3.5 (High Speed Response)</option>
                                 </select>
                             </div>
                         </div>
@@ -371,11 +412,11 @@
                             <label class="sel-label">Retrieval:</label>
                             <div class="mode-select-wrap">
                                 <select id="retrievalModeSelect" class="mode-select" title="Pilih Mode Retrieval AI">
-                                    <option value="agentic_graph">👑 Agentic GraphRAG (KG + Verifier)</option>
-                                    <option value="hybrid_rag">⭐ Hybrid (Semantic + Keyword)</option>
-                                    <option value="dense_rag">🧠 Vector Semantic RAG</option>
-                                    <option value="ocr">📄 Single OCR Page</option>
-                                    <option value="compare">⚖️ Side-by-Side Compare</option>
+                                    <option value="agentic_graph">Agentic GraphRAG (Knowledge Graph + Verifier)</option>
+                                    <option value="hybrid_rag" selected>Hybrid Retrieval (Semantic + BM25)</option>
+                                    <option value="dense_rag">Dense Vector Search</option>
+                                    <option value="ocr">Single Page OCR</option>
+                                    <option value="compare">Side-by-Side Comparison</option>
                                 </select>
                                 <button class="icon-gear-btn" id="btnModeSettings" onclick="document.getElementById('railTabSettings').click()" title="Pengaturan & Tema">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -386,7 +427,6 @@
                             </div>
                         </div>
                     </div>
-
 
                     <!-- CHAT MESSAGE FEED -->
                     <div class="chat-conversation-area" id="chatConversationArea">
@@ -413,7 +453,7 @@
                             </div>
 
                             <div class="card-sources">
-                                <div class="sources-label">Sumber</div>
+                                <div class="sources-label">Sumber Dokumen</div>
                                 <div class="sources-list" id="chatSourcesList">
                                     <div class="source-item" onclick="jumpToPDFPage(3, 'Pasal 9')">
                                         <div class="src-left">
@@ -475,7 +515,7 @@
                             </button>
                         </form>
                         <div class="chat-helper-tip">
-                            Tips: Gunakan @ untuk merujuk pasal tertentu
+                            Tekan Enter untuk mengirim pertanyaan
                         </div>
                     </div>
                 </section>
@@ -517,7 +557,9 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
                     <h3>Technical Inspector</h3>
                 </div>
-                <button class="btn-close-drawer" id="btnCloseInspector" title="Tutup Inspector">✕</button>
+                <button class="btn-close-drawer" id="btnCloseInspector" title="Tutup Inspector">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
             </div>
 
             <div class="inspector-tabs">
@@ -531,7 +573,10 @@
                 <div class="itb-pane active" id="itb-structure">
                     <div class="code-action-bar">
                         <span class="code-title">Pydantic Parsed Output</span>
-                        <button class="btn-copy-code" id="btnCopyJSON">📋 Copy JSON</button>
+                        <button class="btn-copy-code" id="btnCopyJSON">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                            <span>Copy JSON</span>
+                        </button>
                     </div>
                     <pre class="json-code-view" id="inspectorJSONViewer">{\n  "status": "Ready",\n  "document_type": "Government Statutory Document",\n  "document_title": "Undang-Undang Nomor 8 Tahun 1981"\n}</pre>
                 </div>
@@ -539,7 +584,10 @@
                 <div class="itb-pane" id="itb-raw">
                     <div class="code-action-bar">
                         <span class="code-title" id="rawCharStats">0 Karakter</span>
-                        <button class="btn-copy-code" id="btnCopyRaw">📋 Copy Raw</button>
+                        <button class="btn-copy-code" id="btnCopyRaw">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                            <span>Copy Raw</span>
+                        </button>
                     </div>
                     <textarea class="raw-ocr-textarea" id="inspectorRawText" readonly></textarea>
                 </div>
@@ -592,7 +640,9 @@
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
                         <h3>Pilihan Tema Tampilan</h3>
                     </div>
-                    <button class="btn-close-modal" id="btnCloseThemeModal">✕</button>
+                    <button class="btn-close-modal" id="btnCloseThemeModal">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
                 </div>
                 
                 <p class="modal-desc">Pilih tema warna yang paling nyaman untuk sesi membaca dokumen jangka panjang.</p>
@@ -606,9 +656,9 @@
                         <div class="theme-info">
                             <div class="theme-radio-row">
                                 <span class="theme-radio-dot"></span>
-                                <strong>Sage Green (Rekomendasi)</strong>
+                                <strong>Sage Green</strong>
                             </div>
-                            <p>Fokus, tenang, dan natural untuk dokumen hukum.</p>
+                            <p>Fokus, tenang, dan natural untuk naskah hukum.</p>
                         </div>
                     </div>
 
@@ -620,7 +670,7 @@
                         <div class="theme-info">
                             <div class="theme-radio-row">
                                 <span class="theme-radio-dot"></span>
-                                <strong>Claude (Anthropic Warm)</strong>
+                                <strong>Claude Warm</strong>
                             </div>
                             <p>Warm editorial minimalis dengan kontras lembut.</p>
                         </div>
@@ -636,7 +686,7 @@
                                 <span class="theme-radio-dot"></span>
                                 <strong>ChatGPT Dark</strong>
                             </div>
-                            <p>Mode gelap modern tanpa silau dan tanpa neon.</p>
+                            <p>Mode gelap modern tanpa silau dan tanpa kontras berlebih.</p>
                         </div>
                     </div>
                 </div>

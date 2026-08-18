@@ -198,21 +198,21 @@ class LegalKnowledgeGraph:
 
         lines = ["\n=== LEGAL KNOWLEDGE GRAPH RELATIONS ==="]
         for node in subgraph["primary_nodes"][:3]:
-            lines.append(f"📌 Simpul Utama: {node['label']} (Halaman {node['page_number']})")
+            lines.append(f"[Simpul Utama] {node['label']} (Halaman {node['page_number']})")
 
         if subgraph.get("edges"):
-            lines.append("\n🔗 Relasi Hukum Antar-Pasal & Hierarki:")
+            lines.append("\n[Relasi Hukum Antar-Pasal & Hierarki]")
             for edge in subgraph["edges"][:6]:
                 src = self.nodes.get(edge["source_id"], None)
                 tgt = self.nodes.get(edge["target_id"], None)
                 src_lbl = src.label if src else edge["source_id"]
                 tgt_lbl = tgt.label if tgt else edge["target_id"]
-                lines.append(f"  • [{src_lbl}] ──({edge['relation_type']})──► [{tgt_lbl}] ({edge.get('description', '')})")
+                lines.append(f"  - [{src_lbl}] --({edge['relation_type']})--> [{tgt_lbl}] ({edge.get('description', '')})")
 
         if subgraph.get("related_nodes"):
-            lines.append("\n📚 Rujukan Terkait:")
+            lines.append("\n[Rujukan Terkait]")
             for node in subgraph["related_nodes"][:3]:
-                lines.append(f"  • {node['label']} (Halaman {node['page_number']}): {node['text'][:120]}...")
+                lines.append(f"  - {node['label']} (Halaman {node['page_number']}): {node['text'][:120]}...")
 
         lines.append("=========================================\n")
         return "\n".join(lines)

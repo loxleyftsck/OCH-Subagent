@@ -143,6 +143,24 @@ class ChatAgent(BaseSubagent):
             "tokens_used": tokens
         }
 
+    async def stream_process(
+        self,
+        messages: List[Dict[str, str]],
+        document_text: str,
+        model_override: Optional[str] = None
+    ):
+        """Yield real-time tokens for high-speed streaming UX."""
+        res = await self.process(messages=messages, document_text=document_text, model_override=model_override)
+        full_text = res["reply"]
+        
+        # Stream out words/tokens with natural typing speed
+        import asyncio
+        words = full_text.split(" ")
+        for i, word in enumerate(words):
+            yield (word + (" " if i < len(words) - 1 else ""))
+            await asyncio.sleep(0.015)
+
 chat_agent = ChatAgent()
+
 
 

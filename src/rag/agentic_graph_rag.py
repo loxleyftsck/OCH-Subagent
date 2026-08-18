@@ -73,7 +73,7 @@ class AgenticGraphRAG:
         # 5. Build final synthesis context
         verification_header = (
             f"=== EVIDENCE VERIFICATION STATUS ===\n"
-            f"Status: {'VERIFIED 🟢' if verification.is_verified else 'CAUTION ⚠️'} (Confidence: {int(verification.confidence_score*100)}%)\n"
+            f"Status: {'VERIFIED' if verification.is_verified else 'UNVERIFIED'} (Confidence: {int(verification.confidence_score*100)}%)\n"
             f"Catatan: {verification.verification_notes}\n"
             f"====================================\n\n"
         )

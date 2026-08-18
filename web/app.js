@@ -8,6 +8,7 @@ const state = {
     rotation: 0,
     currentTheme: "sage",
     retrievalMode: "hybrid_rag",
+    selectedText: "",
     isProcessingOCR: false,
     isProcessingChat: false,
     inspectorOpen: false
@@ -31,12 +32,20 @@ const btnFitPage = document.getElementById("btnFitPage");
 const btnRotatePDF = document.getElementById("btnRotatePDF");
 const btnDownloadPDF = document.getElementById("btnDownloadPDF");
 const pdfViewport = document.getElementById("pdfViewport");
+const pdfCanvasWrapper = document.getElementById("pdfCanvasWrapper");
 const pdfPageImage = document.getElementById("pdfPageImage");
 const pdfPlaceholder = document.getElementById("pdfPlaceholder");
 const pdfLoading = document.getElementById("pdfLoading");
 const pdfHighlightOverlay = document.getElementById("pdfHighlightOverlay");
 
+// Selection Tooltip DOM
+const selectionTooltip = document.getElementById("selectionTooltip");
+const btnAskSelection = document.getElementById("btnAskSelection");
+const btnSummarizeSelection = document.getElementById("btnSummarizeSelection");
+const btnCopySelection = document.getElementById("btnCopySelection");
+
 // Chat & Mode Selector DOM
+const llmModelSelect = document.getElementById("llmModelSelect");
 const retrievalModeSelect = document.getElementById("retrievalModeSelect");
 const chatConversationArea = document.getElementById("chatConversationArea");
 const chatForm = document.getElementById("chatForm");
@@ -74,8 +83,10 @@ document.addEventListener("DOMContentLoaded", () => {
     initInspectorTabs();
     initSafetyMonitor();
     initExportDropdown();
+    initTextSelectionTooltip();
     loadDocumentList();
     initEventListeners();
+    renderLegalKnowledgeGraph();
 });
 
 // ==========================================================================
@@ -184,6 +195,60 @@ function downloadBlob(content, filename, mimeType) {
 }
 
 // ==========================================================================
+// TEXT SELECTION TOOLTIP (CONTEXTUAL "ASK AI" BAR)
+// ==========================================================================
+function initTextSelectionTooltip() {
+    if (!pdfCanvasWrapper || !selectionTooltip) return;
+
+    pdfViewport.addEventListener("mouseup", (e) => {
+        const sel = window.getSelection();
+        const text = sel.toString().trim();
+        if (text && text.length > 2) {
+            state.selectedText = text;
+            const rect = sel.getRangeAt(0).getBoundingClientRect();
+            const parentRect = pdfViewport.getBoundingClientRect();
+            
+            selectionTooltip.style.top = `${rect.top - parentRect.top - 42}px`;
+            selectionTooltip.style.left = `${Math.max(10, rect.left - parentRect.left + (rect.width / 2) - 120)}px`;
+            selectionTooltip.style.display = "flex";
+        } else {
+            selectionTooltip.style.display = "none";
+        }
+    });
+
+    document.addEventListener("mousedown", (e) => {
+        if (selectionTooltip && !selectionTooltip.contains(e.target) && !pdfViewport.contains(e.target)) {
+            selectionTooltip.style.display = "none";
+        }
+    });
+
+    if (btnAskSelection) {
+        btnAskSelection.addEventListener("click", () => {
+            selectionTooltip.style.display = "none";
+            const q = `Jelaskan maksud dari bagian ini: "${state.selectedText}"`;
+            chatInput.value = q;
+            handleSendChat();
+        });
+    }
+
+    if (btnSummarizeSelection) {
+        btnSummarizeSelection.addEventListener("click", () => {
+            selectionTooltip.style.display = "none";
+            const q = `Ringkas pokok hukum berikut: "${state.selectedText}"`;
+            chatInput.value = q;
+            handleSendChat();
+        });
+    }
+
+    if (btnCopySelection) {
+        btnCopySelection.addEventListener("click", () => {
+            navigator.clipboard.writeText(state.selectedText);
+            selectionTooltip.style.display = "none";
+        });
+    }
+}
+
+// ==========================================================================
 // ANALYSIS & INSPECTOR TABS
 // ==========================================================================
 function initAnalysisTabs() {
@@ -200,6 +265,10 @@ function initAnalysisTabs() {
 
             const scrollArea = document.querySelector(".analysis-scroll-area");
             if (scrollArea) scrollArea.scrollTop = 0;
+
+            if (tab.getAttribute("data-atab") === "graf") {
+                renderLegalKnowledgeGraph();
+            }
         });
     });
 }
@@ -235,18 +304,95 @@ function initInspectorTabs() {
     if (btnCopyJSON) {
         btnCopyJSON.addEventListener("click", () => {
             navigator.clipboard.writeText(inspectorJSONViewer.textContent);
-            btnCopyJSON.textContent = "✓ Copied!";
-            setTimeout(() => btnCopyJSON.textContent = "📋 Copy JSON", 1500);
+            btnCopyJSON.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><polyline points="20 6 9 17 4 12"></polyline></svg> <span>Tersalin</span>`;
+            setTimeout(() => {
+                btnCopyJSON.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> <span>Copy JSON</span>`;
+            }, 1500);
         });
     }
 
     if (btnCopyRaw) {
         btnCopyRaw.addEventListener("click", () => {
             navigator.clipboard.writeText(inspectorRawText.value);
-            btnCopyRaw.textContent = "✓ Copied!";
-            setTimeout(() => btnCopyRaw.textContent = "📋 Copy Raw", 1500);
+            btnCopyRaw.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><polyline points="20 6 9 17 4 12"></polyline></svg> <span>Tersalin</span>`;
+            setTimeout(() => {
+                btnCopyRaw.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> <span>Copy Raw</span>`;
+            }, 1500);
         });
     }
+}
+
+// ==========================================================================
+// INTERACTIVE LEGAL KNOWLEDGE GRAPH RENDERER
+// ==========================================================================
+function renderLegalKnowledgeGraph() {
+    const svg = document.getElementById("legalGraphSvg");
+    if (!svg) return;
+
+    svg.innerHTML = `
+        <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="22" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="#84968C" />
+            </marker>
+        </defs>
+        
+        <!-- Links -->
+        <g stroke="#D8E2DA" stroke-width="1.5" marker-end="url(#arrow)">
+            <line x1="270" y1="50" x2="160" y2="140" />
+            <line x1="270" y1="50" x2="380" y2="140" />
+            <line x1="160" y1="140" x2="90" y2="230" />
+            <line x1="160" y1="140" x2="230" y2="230" />
+            <line x1="380" y1="140" x2="450" y2="230" />
+        </g>
+
+        <!-- Relation Labels -->
+        <g font-size="9" fill="#53645A" text-anchor="middle" font-weight="500">
+            <text x="205" y="90">berdasar</text>
+            <text x="335" y="90">mengatur</text>
+            <text x="115" y="180">rujukan</text>
+            <text x="205" y="180">turunan</text>
+            <text x="425" y="180">kontrol</text>
+        </g>
+
+        <!-- Nodes (Interactive Click to Page Jump) -->
+        <!-- Root Node: UU 8/1981 -->
+        <g class="graph-node" onclick="jumpToPDFPage(1, 'UU 8/1981')" style="cursor: pointer;">
+            <circle cx="270" cy="50" r="24" fill="var(--primary)" filter="drop-shadow(0 2px 4px rgba(0,0,0,0.1))" />
+            <text x="270" y="53" font-size="10" font-weight="700" fill="#FFFFFF" text-anchor="middle">UU 8/1981</text>
+        </g>
+
+        <!-- Node: Pasal 9 -->
+        <g class="graph-node" onclick="jumpToPDFPage(3, 'Pasal 9')" style="cursor: pointer;">
+            <circle cx="160" cy="140" r="20" fill="var(--primary)" />
+            <text x="160" y="143" font-size="9.5" font-weight="600" fill="#FFFFFF" text-anchor="middle">Pasal 9</text>
+            <text x="160" y="172" font-size="9" fill="var(--text-muted)" text-anchor="middle">Asas Bebas & Jujur</text>
+        </g>
+
+        <!-- Node: Pasal 10 -->
+        <g class="graph-node" onclick="jumpToPDFPage(3, 'Pasal 10')" style="cursor: pointer;">
+            <circle cx="380" cy="140" r="20" fill="var(--primary)" />
+            <text x="380" y="143" font-size="9.5" font-weight="600" fill="#FFFFFF" text-anchor="middle">Pasal 10</text>
+            <text x="380" y="172" font-size="9" fill="var(--text-muted)" text-anchor="middle">Praperadilan</text>
+        </g>
+
+        <!-- Sub Node: Pasal 12 -->
+        <g class="graph-node" onclick="jumpToPDFPage(4, 'Pasal 12')" style="cursor: pointer;">
+            <circle cx="90" cy="230" r="17" fill="#5E9D7A" />
+            <text x="90" y="233" font-size="9" font-weight="600" fill="#FFFFFF" text-anchor="middle">Pasal 12</text>
+        </g>
+
+        <!-- Sub Node: Pasal 16 -->
+        <g class="graph-node" onclick="jumpToPDFPage(4, 'Pasal 16')" style="cursor: pointer;">
+            <circle cx="230" cy="230" r="17" fill="#5E9D7A" />
+            <text x="230" y="233" font-size="9" font-weight="600" fill="#FFFFFF" text-anchor="middle">Pasal 16</text>
+        </g>
+
+        <!-- Sub Node: Pasal 77 -->
+        <g class="graph-node" onclick="jumpToPDFPage(12, 'Pasal 77')" style="cursor: pointer;">
+            <circle cx="450" cy="230" r="17" fill="#5E9D7A" />
+            <text x="450" y="233" font-size="9" font-weight="600" fill="#FFFFFF" text-anchor="middle">Pasal 77</text>
+        </g>
+    `;
 }
 
 // ==========================================================================
@@ -354,7 +500,7 @@ window.jumpToPDFPage = function(pageNum, articleName) {
 
         if (pdfHighlightOverlay) {
             pdfHighlightOverlay.classList.add("active");
-            setTimeout(() => pdfHighlightOverlay.classList.remove("active"), 2000);
+            setTimeout(() => pdfHighlightOverlay.classList.remove("active"), 2200);
         }
 
         if (pdfViewport) {
@@ -379,7 +525,7 @@ async function loadAnalysisSummary(filename) {
 }
 
 // ==========================================================================
-// CHAT & RETRIEVAL HANDLER
+// SSE REAL-TIME STREAMING CHAT HANDLER
 // ==========================================================================
 async function handleSendChat(e) {
     if (e) e.preventDefault();
@@ -390,15 +536,18 @@ async function handleSendChat(e) {
     chatInput.value = "";
     state.isProcessingChat = true;
 
-    const loadingCardId = `load-${Date.now()}`;
-    appendLoadingCard(loadingCardId);
+    const cardId = `msg-${Date.now()}`;
+    const cardEl = appendStreamingCard(cardId);
+    const bodyParagraph = cardEl.querySelector(".stream-text");
 
     const mode = retrievalModeSelect ? retrievalModeSelect.value : "hybrid_rag";
-    const llmModelSelect = document.getElementById("llmModelSelect");
     const chosenModel = llmModelSelect ? llmModelSelect.value : "qwen-35b";
 
+    let fullAnswer = "";
+    let capturedCitations = [];
+
     try {
-        const res = await fetch("/api/chat", {
+        const response = await fetch("/api/chat/stream", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -410,19 +559,46 @@ async function handleSendChat(e) {
             })
         });
 
+        if (!response.ok) {
+            throw new Error(`HTTP error ${response.status}`);
+        }
 
-        const data = await res.json();
-        removeLoadingCard(loadingCardId);
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder("utf-8");
+        let buffer = "";
 
-        if (res.ok) {
-            appendAssistantCard(data.reply, data.citations || []);
-            updateAnalysisPanel(query, data.reply, data.citations || []);
-        } else {
-            appendAssistantCard("Maaf, terjadi kendala saat memproses permintaan dokumen.", []);
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n\n");
+            buffer = lines.pop();
+
+            for (const line of lines) {
+                if (line.startsWith("data: ")) {
+                    const jsonStr = line.replace("data: ", "").trim();
+                    if (!jsonStr) continue;
+                    try {
+                        const payload = JSON.parse(jsonStr);
+                        if (payload.type === "token") {
+                            fullAnswer += payload.token;
+                            bodyParagraph.textContent = fullAnswer;
+                            chatConversationArea.scrollTop = chatConversationArea.scrollHeight;
+                        } else if (payload.type === "citations") {
+                            capturedCitations = payload.citations || [];
+                            attachCitationsToCard(cardEl, capturedCitations);
+                        } else if (payload.type === "done") {
+                            updateAnalysisPanel(query, fullAnswer, capturedCitations);
+                        }
+                    } catch (pe) {
+                        // ignore malformed JSON chunk
+                    }
+                }
+            }
         }
     } catch (err) {
-        removeLoadingCard(loadingCardId);
-        appendAssistantCard("Koneksi retrieval terputus. Silakan coba kembali.", []);
+        bodyParagraph.textContent = "Koneksi retrieval terputus atau offline. Silakan coba kembali.";
     } finally {
         state.isProcessingChat = false;
     }
@@ -440,33 +616,11 @@ function appendUserBubble(text) {
     chatConversationArea.scrollTop = chatConversationArea.scrollHeight;
 }
 
-function appendAssistantCard(replyText, citations) {
+function appendStreamingCard(id) {
     const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const card = document.createElement("div");
+    card.id = id;
     card.className = "chat-response-card";
-
-    let sourcesHtml = "";
-    if (citations && citations.length > 0) {
-        sourcesHtml = `
-            <div class="card-sources">
-                <div class="sources-label">Sumber Dokumen</div>
-                <div class="sources-list">
-                    ${citations.slice(0, 4).map(c => `
-                        <div class="source-item" onclick="jumpToPDFPage(${c.page_number}, '${escapeHtml(c.chunk_id)}')">
-                            <div class="src-left">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-                                <div class="src-info">
-                                    <span class="src-title">${escapeHtml(c.section_title || 'Pasal Rujukan')}</span>
-                                    <span class="src-sub">Halaman ${c.page_number}</span>
-                                </div>
-                            </div>
-                            <span class="src-badge">${Math.round((c.score || 0.95) * 100)}%</span>
-                        </div>
-                    `).join('')}
-                </div>
-            </div>
-        `;
-    }
 
     card.innerHTML = `
         <div class="card-header">
@@ -477,32 +631,39 @@ function appendAssistantCard(replyText, citations) {
             <span class="card-time">${timeStr}</span>
         </div>
         <div class="card-body">
-            <p>${escapeHtml(replyText)}</p>
+            <p class="stream-text" style="white-space: pre-wrap;"></p>
         </div>
-        ${sourcesHtml}
+        <div class="sources-placeholder"></div>
     `;
 
     chatConversationArea.appendChild(card);
     chatConversationArea.scrollTop = chatConversationArea.scrollHeight;
+    return card;
 }
 
-function appendLoadingCard(id) {
-    const card = document.createElement("div");
-    card.id = id;
-    card.className = "chat-response-card";
-    card.innerHTML = `
-        <div class="card-body" style="padding: 10px; color: var(--text-muted); display: flex; align-items: center; gap: 8px;">
-            <div class="spinner-ring" style="width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
-            <span>Menganalisis dokumen & sitasi hukum...</span>
+function attachCitationsToCard(cardEl, citations) {
+    const placeholder = cardEl.querySelector(".sources-placeholder");
+    if (!placeholder || !citations || citations.length === 0) return;
+
+    placeholder.innerHTML = `
+        <div class="card-sources">
+            <div class="sources-label">Sumber Dokumen</div>
+            <div class="sources-list">
+                ${citations.slice(0, 4).map(c => `
+                    <div class="source-item" onclick="jumpToPDFPage(${c.page_number}, '${escapeHtml(c.chunk_id)}')">
+                        <div class="src-left">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                            <div class="src-info">
+                                <span class="src-title">${escapeHtml(c.section_title || 'Pasal Rujukan')}</span>
+                                <span class="src-sub">Halaman ${c.page_number}</span>
+                            </div>
+                        </div>
+                        <span class="src-badge">${Math.round((c.score || 0.95) * 100)}%</span>
+                    </div>
+                `).join('')}
+            </div>
         </div>
     `;
-    chatConversationArea.appendChild(card);
-    chatConversationArea.scrollTop = chatConversationArea.scrollHeight;
-}
-
-function removeLoadingCard(id) {
-    const el = document.getElementById(id);
-    if (el) el.remove();
 }
 
 function updateAnalysisPanel(query, answer, citations) {
@@ -516,11 +677,13 @@ function updateAnalysisPanel(query, answer, citations) {
     if (citationCardsGrid && citations && citations.length > 0) {
         citationCardsGrid.innerHTML = citations.slice(0, 4).map(c => `
             <div class="citation-card" data-page="${c.page_number}">
-                <div class="card-top">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-                    <span class="cit-name">${escapeHtml(c.section_title || 'Pasal ' + c.page_number)}</span>
+                <div>
+                    <div class="card-top">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                        <span class="cit-name">${escapeHtml(c.section_title || 'Pasal ' + c.page_number)}</span>
+                    </div>
+                    <span class="cit-page">Halaman ${c.page_number}</span>
                 </div>
-                <span class="cit-page">Halaman ${c.page_number}</span>
                 <div class="cit-meta">
                     <span class="cit-relevance">Relevansi ${Math.round((c.score || 0.95) * 100)}%</span>
                     <button class="btn-jump-pdf" onclick="jumpToPDFPage(${c.page_number}, '${escapeHtml(c.chunk_id)}')">Lihat di PDF</button>

@@ -316,6 +316,18 @@ html, body {
     transition: background-color var(--transition-fast);
 }
 
+.dropdown-item .item-icon {
+    width: 14px;
+    height: 14px;
+    margin-right: 8px;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+.dropdown-item:hover .item-icon {
+    color: var(--primary);
+}
+
 .dropdown-item:hover {
     background-color: var(--primary-light);
     color: var(--primary);
@@ -486,6 +498,98 @@ html, body {
     border-color: var(--primary);
     background-color: rgba(47, 107, 87, 0.08);
 }
+
+/* Floating Selection Action Tooltip */
+.selection-tooltip {
+    position: absolute;
+    z-index: 80;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.16);
+    padding: 4px;
+    animation: fadeIn 0.15s ease-out;
+}
+
+.btn-sel-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 5px 8px;
+    font-family: var(--font-sans);
+    font-size: 11.5px;
+    font-weight: 500;
+    color: var(--text-main);
+    cursor: pointer;
+    transition: background-color var(--transition-fast);
+}
+
+.btn-sel-action svg {
+    width: 12px;
+    height: 12px;
+    color: var(--text-muted);
+}
+
+.btn-sel-action:hover {
+    background-color: var(--primary-light);
+    color: var(--primary);
+}
+
+.btn-sel-action:hover svg {
+    color: var(--primary);
+}
+
+/* Legal Knowledge Graph Styles */
+.graph-viewer-container {
+    background-color: var(--bg-subtle);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 12px;
+    margin-bottom: 12px;
+    overflow: hidden;
+}
+
+.legal-graph-svg {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.graph-legend {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font-size: 11.5px;
+    color: var(--text-muted);
+}
+
+.legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.legend-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.dot-primary { background-color: var(--primary); }
+.dot-sub { background-color: #5E9D7A; }
+.dot-root { background-color: #B56A38; }
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
 
 .viewport-placeholder {
     display: flex;
@@ -1302,12 +1406,61 @@ html, body {
 }
 
 .btn-copy-code {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
     background-color: var(--bg-subtle);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
-    padding: 2px 6px;
-    font-size: 10.5px;
+    padding: 3px 8px;
+    font-size: 11px;
+    font-weight: 500;
     cursor: pointer;
+    color: var(--text-main);
+    transition: all var(--transition-fast);
+}
+
+.btn-copy-code svg {
+    width: 12px;
+    height: 12px;
+    color: var(--text-muted);
+}
+
+.btn-copy-code:hover {
+    background-color: var(--primary-light);
+    border-color: var(--primary-border);
+    color: var(--primary);
+}
+
+.btn-copy-code:hover svg {
+    color: var(--primary);
+}
+
+.btn-close-drawer, .btn-close-modal {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    transition: all var(--transition-fast);
+}
+
+.btn-close-drawer svg, .btn-close-modal svg {
+    width: 15px;
+    height: 15px;
+    color: var(--text-muted);
+}
+
+.btn-close-drawer:hover, .btn-close-modal:hover {
+    background-color: var(--bg-subtle);
+    color: var(--text-main);
+}
+
+.btn-close-drawer:hover svg, .btn-close-modal:hover svg {
     color: var(--text-main);
 }
 
