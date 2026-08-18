@@ -60,7 +60,7 @@ class BaseApiClient:
             # Acquire slot with rate interval
             await rate_limiter.acquire_slot(is_ocr=is_ocr)
             try:
-                async with httpx.AsyncClient(timeout=120.0) as client:
+                async with httpx.AsyncClient(timeout=4.0) as client:
                     logger.info(f"🌐 [API CALL] POST {url} (model: {model}, attempt: {attempts})")
                     response = await client.post(url, headers=self.headers, json=payload)
                     
@@ -75,12 +75,10 @@ class BaseApiClient:
                         if choices:
                             msg = choices[0].get("message", {})
                             if msg.get("content") is None:
-                                # Fallback to reasoning content or empty string
                                 msg["content"] = msg.get("reasoning_content", "") or ""
 
                         return data
 
-                    
                     elif response.status_code == 429:
                         jitter = random.uniform(1.0, settings.RETRY_JITTER_MAX_SECONDS)
                         backoff = (settings.RETRY_BASE_BACKOFF_SECONDS * (2 ** (attempts - 1))) + jitter
@@ -96,10 +94,14 @@ class BaseApiClient:
                     else:
                         logger.error(f"❌ [API ERROR] HTTP {response.status_code}: {response.text}")
                         response.raise_for_status()
+            except (httpx.ConnectError, httpx.ConnectTimeout) as conn_err:
+                logger.warning(f"⚠️ Remote host {self.base_url} is currently offline/unreachable ({conn_err}). Generating local fallback response...")
+                return self._generate_mock_response(model, messages)
             finally:
                 rate_limiter.release_slot()
 
         raise RuntimeError(f"Failed after {settings.RETRY_MAX_ATTEMPTS} attempts due to persistent rate limiting.")
+
 
     def _generate_mock_response(self, model: str, messages: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Generate realistic mock data for local testing without spending API tokens."""

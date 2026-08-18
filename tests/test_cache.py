@@ -2,9 +2,13 @@ import os
 import sys
 import tempfile
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from PIL import Image
 from src.cache.local_cache import LocalCacheManager
 from src.utils.image_utils import get_image_hash
+
 
 def test_cache_hit_and_store():
     with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmpdir:

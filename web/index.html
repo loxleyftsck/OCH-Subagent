@@ -1,204 +1,652 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="id" data-theme="sage">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OCH-Subagent | Document Intelligence & OCR System</title>
+    <title>OCH OCR — Enterprise Document Intelligence</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="app-container">
-        <!-- TOP STATUS & SAFETY BAR -->
-        <header class="top-bar">
-            <div class="brand">
-                <div class="logo-icon">⚡</div>
-                <div class="brand-text">
-                    <h1>OCH-Subagent</h1>
-                    <span class="subtext">Document Intelligence & Multi-Agent OCR</span>
+    <div class="app-layout">
+        <!-- TOP HEADER -->
+        <header class="app-header">
+            <div class="header-left">
+                <div class="brand-logo" title="OCH OCR Document Intelligence">
+                    <svg class="brand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                        <polyline points="10 9 9 9 8 9"></polyline>
+                    </svg>
+                    <span class="brand-name">OCH OCR</span>
+                </div>
+
+                <div class="doc-select-pill">
+                    <select id="docSelect" class="doc-select" title="Pilih Dokumen Aktif">
+                        <option value="">Memuat dokumen...</option>
+                    </select>
+                    <svg class="select-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
                 </div>
             </div>
 
-            <!-- Real-time Quota & Team Safety Widget -->
-            <div class="safety-widget" id="safetyWidget">
-                <div class="safety-item">
-                    <span class="label">Team Shared Safety</span>
-                    <span class="badge badge-success" id="teamModeBadge">7-Person Shield ON</span>
-                </div>
-                <div class="safety-item">
-                    <span class="label">OCR Cooldown (30s)</span>
-                    <span class="badge badge-cooldown" id="ocrCooldownBadge">Ready 🟢</span>
-                </div>
-                <div class="safety-item">
-                    <span class="label">Concurrency Slot</span>
-                    <span class="badge badge-slot" id="slotBadge">0 / 1 Active</span>
-                </div>
-                <div class="safety-item">
-                    <span class="label">Daily Local OCR Calls</span>
-                    <span class="badge badge-usage" id="dailyUsageBadge">0 / 25 Calls</span>
+            <div class="header-center">
+                <div class="status-indicator" id="statusIndicator">
+                    <span class="status-dot"></span>
+                    <span class="status-text" id="statusText">OCR Ready</span>
                 </div>
             </div>
 
-            <!-- Action Controls -->
-            <div class="top-actions">
-                <button class="btn btn-secondary" id="btnDownloadHF" title="Download sample Row 4 from Hugging Face BEE-spoke-data/govdocs1-pdf-source">
-                    📥 Download HF Row 4
-                </button>
-                <label class="btn btn-outline" for="fileUploadInput">
-                    📤 Upload PDF / Image
+            <div class="header-right">
+                <label class="btn-header btn-upload" for="fileUploadInput" title="Upload PDF atau Gambar">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                    <span>Upload</span>
                 </label>
                 <input type="file" id="fileUploadInput" accept=".pdf,.png,.jpg,.jpeg,.webp" style="display:none;">
+
+                <div class="dropdown">
+                    <button class="btn-header" id="btnExport" title="Export Hasil Analisis">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                        </svg>
+                        <span>Export</span>
+                        <svg style="width:12px;height:12px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </button>
+                    <div class="dropdown-menu" id="exportMenu">
+                        <button class="dropdown-item" id="btnExportJSON">📄 Export Structured JSON</button>
+                        <button class="dropdown-item" id="btnExportText">📝 Export Raw Text</button>
+                        <button class="dropdown-item" id="btnExportMarkdown">📑 Export Markdown Report</button>
+                    </div>
+                </div>
+
+                <button class="btn-header btn-inspector-toggle" id="btnToggleInspector" title="Buka Technical Inspector (Metadata, Tokens, JSON)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="16" x2="12" y2="12"></line>
+                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                    </svg>
+                    <span>Inspector</span>
+                </button>
+
+                <div class="user-avatar" id="btnUserMenu" title="Profil Pengguna & Pilihan Tema">AD</div>
             </div>
         </header>
 
-        <!-- MAIN 3-PANEL WORKSPACE -->
-        <main class="workspace-grid">
-            <!-- PANEL 1: PDF VIEWER -->
-            <section class="panel panel-pdf">
-                <div class="panel-header">
-                    <div class="panel-title">
-                        <span class="icon">📑</span>
-                        <h2>Document Viewer</h2>
+        <!-- MAIN 3-COLUMN WORKSPACE WITH RIGHT RAIL -->
+        <div class="workspace-wrapper">
+            <main class="three-column-grid" id="threeColumnGrid">
+                
+                <!-- COLUMN 1: PDF VIEWER (HERO COMPONENT) -->
+                <section class="column-panel panel-viewer" id="panelViewer">
+                    <div class="panel-header-bar">
+                        <div class="panel-heading">
+                            <h3>Dokumen</h3>
+                        </div>
+                        <div class="viewer-nav-group">
+                            <button class="icon-action-btn" id="btnPrevPage" title="Halaman Sebelumnya">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                            </button>
+                            <span class="page-badge" id="pageIndicator">1 / 1</span>
+                            <button class="icon-action-btn" id="btnNextPage" title="Halaman Berikutnya">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                            </button>
+                        </div>
+                        <div class="viewer-zoom-group">
+                            <button class="icon-action-btn" id="btnZoomOut" title="Perkecil">−</button>
+                            <span class="zoom-badge" id="zoomLevel">100%</span>
+                            <button class="icon-action-btn" id="btnZoomIn" title="Perbesar">+</button>
+                        </div>
+                        <div class="viewer-utility-group">
+                            <button class="icon-action-btn" id="btnFitWidth" title="Fit Lebar Halaman">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
+                            </button>
+                            <button class="icon-action-btn" id="btnFitPage" title="Fit 1 Halaman Penuh">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line></svg>
+                            </button>
+                        </div>
                     </div>
-                    <div class="doc-selector-wrapper">
-                        <select id="docSelect" class="select-input">
-                            <option value="">Loading documents...</option>
-                        </select>
-                    </div>
-                </div>
 
-                <div class="doc-toolbar">
-                    <div class="page-controls">
-                        <button class="btn-icon" id="btnPrevPage" title="Previous Page">◀</button>
-                        <span class="page-indicator" id="pageIndicator">Page 1 / 1</span>
-                        <button class="btn-icon" id="btnNextPage" title="Next Page">▶</button>
+                    <!-- PDF VIEWPORT -->
+                    <div class="pdf-viewport" id="pdfViewport">
+                        <div class="pdf-loading-spinner" id="pdfLoading" style="display:none;">
+                            <div class="spinner-ring"></div>
+                            <span>Memuat Halaman...</span>
+                        </div>
+                        <div class="pdf-canvas-wrapper" id="pdfCanvasWrapper">
+                            <img id="pdfPageImage" class="rendered-pdf-image" alt="Rendered PDF Page" style="display:none;">
+                            <div class="pdf-highlight-overlay" id="pdfHighlightOverlay"></div>
+                            <div id="pdfPlaceholder" class="viewport-placeholder">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                    <polyline points="14 2 14 8 20 8"></polyline>
+                                </svg>
+                                <p>Pilih dokumen dari menu atas untuk membaca naskah</p>
+                            </div>
+                        </div>
                     </div>
-                    <div class="zoom-controls">
-                        <button class="btn-icon" id="btnZoomOut" title="Zoom Out">−</button>
-                        <span class="zoom-level" id="zoomLevel">100%</span>
-                        <button class="btn-icon" id="btnZoomIn" title="Zoom In">+</button>
+
+                    <!-- PDF FOOTER CONTROLS -->
+                    <div class="viewer-footer-bar">
+                        <div class="fit-controls">
+                            <button class="btn-footer-ctrl" id="btnFitWidthFooter" onclick="document.getElementById('btnFitWidth').click()">
+                                <span>Fit Width</span>
+                            </button>
+                            <button class="btn-footer-ctrl" id="btnFitPageFooter" onclick="document.getElementById('btnFitPage').click()">
+                                <span>Fit Page</span>
+                            </button>
+                        </div>
+                        <div class="extra-actions">
+                            <button class="icon-footer-btn" id="btnRotatePDF" title="Putar Halaman 90°">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path></svg>
+                            </button>
+                            <button class="icon-footer-btn" id="btnDownloadPDF" title="Unduh Berkas Asli">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                            </button>
+                        </div>
                     </div>
-                    <button class="btn btn-primary" id="btnRunOCR">
-                        ⚡ Ekstrak OCR
+                </section>
+
+                <!-- COLUMN 2: AI ANALYSIS PANEL (CLAUDE-STYLE EDITORIAL) -->
+                <section class="column-panel panel-analysis" id="panelAnalysis">
+                    <div class="analysis-tab-header">
+                        <button class="analysis-tab active" data-atab="jawaban">Jawaban AI</button>
+                        <button class="analysis-tab" data-atab="ringkasan">Ringkasan</button>
+                        <button class="analysis-tab" data-atab="poin_penting">Poin Penting</button>
+                    </div>
+
+                    <div class="analysis-scroll-area">
+                        
+                        <!-- TAB 1: JAWABAN AI -->
+                        <div class="analysis-pane active" id="pane-jawaban">
+                            <div class="analysis-article" id="analysisArticleContent">
+                                <h2 class="article-title" id="articleTitle">Apakah undang undang ini adil?</h2>
+                                
+                                <p class="article-intro" id="articleIntro">
+                                    Undang-Undang Nomor 8 Tahun 1981 tentang Hukum Acara Pidana dirancang untuk memastikan proses peradilan pidana yang adil, transparan, dan sesuai dengan prinsip negara hukum. Beberapa prinsip keadilan yang tercermin dalam UU ini antara lain:
+                                </p>
+
+                                <div class="analysis-points-list" id="analysisPointsList">
+                                    <div class="point-item">
+                                        <div class="point-icon">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                        </div>
+                                        <div class="point-content">
+                                            <h4>Asas Peradilan yang Jujur dan Tidak Memihak</h4>
+                                            <p>Pasal 9 menegaskan bahwa hakim memeriksa dan memutus perkara berdasarkan asas bebas, jujur, dan tidak memihak.</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="point-item">
+                                        <div class="point-icon">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                        </div>
+                                        <div class="point-content">
+                                            <h4>Hak Tersangka dan Terdakwa</h4>
+                                            <p>UU ini memberikan hak-hak seperti didampingi penasihat hukum, hak untuk membela diri, serta upaya hukum (Pasal 12).</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="point-item">
+                                        <div class="point-icon">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                        </div>
+                                        <div class="point-content">
+                                            <h4>Pengawasan melalui Praperadilan</h4>
+                                            <p>Pasal 10 memberikan mekanisme kontrol terhadap tindakan penangkapan, penahanan, dan penghentian penyidikan/penuntutan untuk mencegah kesewenang-wenangan.</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="point-item">
+                                        <div class="point-icon">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                        </div>
+                                        <div class="point-content">
+                                            <h4>Pembuktian yang Sah</h4>
+                                            <p>Penyitaan dan penggeledahan diatur ketat untuk kepentingan pembuktian dalam penyidikan, penuntutan, dan peradilan (Pasal 16–17).</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <p class="article-conclusion" id="articleConclusion">
+                                    Dengan demikian, UU ini secara struktural berupaya menjamin keadilan prosedural bagi semua pihak dalam proses peradilan pidana.
+                                </p>
+
+                                <!-- CITATION CARDS SECTION -->
+                                <div class="citations-section">
+                                    <h4 class="citations-heading">Sumber yang digunakan</h4>
+                                    <div class="citation-cards-grid" id="citationCardsGrid">
+                                        <div class="citation-card" data-page="3">
+                                            <div>
+                                                <div class="card-top">
+                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                                                    <span class="cit-name">Pasal 9</span>
+                                                </div>
+                                                <span class="cit-page">Halaman 3</span>
+                                            </div>
+                                            <div class="cit-meta">
+                                                <span class="cit-relevance">Relevansi 98%</span>
+                                                <button class="btn-jump-pdf" onclick="jumpToPDFPage(3, 'Pasal 9')">Lihat di PDF</button>
+                                            </div>
+                                        </div>
+
+                                        <div class="citation-card" data-page="3">
+                                            <div>
+                                                <div class="card-top">
+                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                                                    <span class="cit-name">Pasal 10</span>
+                                                </div>
+                                                <span class="cit-page">Halaman 3</span>
+                                            </div>
+                                            <div class="cit-meta">
+                                                <span class="cit-relevance">Relevansi 96%</span>
+                                                <button class="btn-jump-pdf" onclick="jumpToPDFPage(3, 'Pasal 10')">Lihat di PDF</button>
+                                            </div>
+                                        </div>
+
+                                        <div class="citation-card" data-page="4">
+                                            <div>
+                                                <div class="card-top">
+                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                                                    <span class="cit-name">Pasal 12</span>
+                                                </div>
+                                                <span class="cit-page">Halaman 4</span>
+                                            </div>
+                                            <div class="cit-meta">
+                                                <span class="cit-relevance">Relevansi 95%</span>
+                                                <button class="btn-jump-pdf" onclick="jumpToPDFPage(4, 'Pasal 12')">Lihat di PDF</button>
+                                            </div>
+                                        </div>
+
+                                        <div class="citation-card" data-page="4">
+                                            <div>
+                                                <div class="card-top">
+                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                                                    <span class="cit-name">Pasal 16–17</span>
+                                                </div>
+                                                <span class="cit-page">Halaman 4</span>
+                                            </div>
+                                            <div class="cit-meta">
+                                                <span class="cit-relevance">Relevansi 93%</span>
+                                                <button class="btn-jump-pdf" onclick="jumpToPDFPage(4, 'Pasal 16')">Lihat di PDF</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- TAB 2: RINGKASAN EKSEKUTIF -->
+                        <div class="analysis-pane" id="pane-ringkasan">
+                            <div class="analysis-article">
+                                <h3 class="article-title">Ringkasan Eksekutif Dokumen</h3>
+                                <div class="article-intro" id="summaryBoxContent">
+                                    <p>Naskah ini mengatur tata cara penegakan hukum pidana Republik Indonesia mulai dari penyelidikan, penyidikan, penuntutan, pemeriksaan di sidang pengadilan, hingga pelaksanaan putusan pengadilan.</p>
+                                </div>
+                                <div class="analysis-points-list">
+                                    <div class="point-item">
+                                        <div class="point-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+                                        <div class="point-content">
+                                            <h4>Klasifikasi Dokumen</h4>
+                                            <p id="summaryDocType">Undang-Undang Republik Indonesia</p>
+                                        </div>
+                                    </div>
+                                    <div class="point-item">
+                                        <div class="point-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+                                        <div class="point-content">
+                                            <h4>Total Halaman</h4>
+                                            <p id="summaryTotalPages">108 Halaman</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- TAB 3: POIN PENTING -->
+                        <div class="analysis-pane" id="pane-poin_penting">
+                            <div class="analysis-article">
+                                <h3 class="article-title">Poin Penting & Hak Hukum</h3>
+                                <div class="analysis-points-list">
+                                    <div class="point-item">
+                                        <div class="point-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+                                        <div class="point-content">
+                                            <h4>Asas Legalitas</h4>
+                                            <p>Tiada perbuatan dapat dipidana kecuali atas kekuatan aturan perundang-undangan pidana yang telah ada.</p>
+                                        </div>
+                                    </div>
+                                    <div class="point-item">
+                                        <div class="point-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+                                        <div class="point-content">
+                                            <h4>Bantuan Hukum</h4>
+                                            <p>Tersangka/terdakwa berhak mendapat bantuan hukum pada setiap tingkat pemeriksaan proses peradilan.</p>
+                                        </div>
+                                    </div>
+                                    <div class="point-item">
+                                        <div class="point-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+                                        <div class="point-content">
+                                            <h4>Ganti Kerugian & Rehabilitasi</h4>
+                                            <p>Korban penangkapan atau penahanan tanpa alasan sah berhak menuntut rehabilitasi dan ganti kerugian.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- COLUMN 3: AI ASSISTANT (CHAT CONVERSATION) -->
+                <section class="column-panel panel-assistant" id="panelAssistant">
+                    <div class="assistant-header-bar">
+                        <div class="assistant-heading">
+                            <svg class="sparkle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z"></path>
+                            </svg>
+                            <h3>AI Assistant</h3>
+                        </div>
+                    </div>
+
+                    <!-- LLM MODEL & RETRIEVAL MODE SELECTORS -->
+                    <div class="mode-dropdown-container">
+                        <div class="selector-row">
+                            <label class="sel-label">Model LLM:</label>
+                            <div class="mode-select-wrap">
+                                <select id="llmModelSelect" class="mode-select" title="Pilih Model Bahasa Besar (LLM)">
+                                    <option value="qwen-35b">🧠 Qwen 3.5 (Deep Legal Reasoning)</option>
+                                    <option value="nemotron-35">⚡ Nemotron 3.5 (High Speed Response)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="selector-row" style="margin-top: 6px;">
+                            <label class="sel-label">Retrieval:</label>
+                            <div class="mode-select-wrap">
+                                <select id="retrievalModeSelect" class="mode-select" title="Pilih Mode Retrieval AI">
+                                    <option value="agentic_graph">👑 Agentic GraphRAG (KG + Verifier)</option>
+                                    <option value="hybrid_rag">⭐ Hybrid (Semantic + Keyword)</option>
+                                    <option value="dense_rag">🧠 Vector Semantic RAG</option>
+                                    <option value="ocr">📄 Single OCR Page</option>
+                                    <option value="compare">⚖️ Side-by-Side Compare</option>
+                                </select>
+                                <button class="icon-gear-btn" id="btnModeSettings" onclick="document.getElementById('railTabSettings').click()" title="Pengaturan & Tema">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <!-- CHAT MESSAGE FEED -->
+                    <div class="chat-conversation-area" id="chatConversationArea">
+                        
+                        <!-- Initial Sample Conversation -->
+                        <div class="chat-bubble user-bubble">
+                            <div class="bubble-text">apakah undang undang ini adil?</div>
+                            <span class="bubble-time">10:21</span>
+                        </div>
+
+                        <div class="chat-response-card">
+                            <div class="card-header">
+                                <div class="card-avatar">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z"></path>
+                                    </svg>
+                                </div>
+                                <span class="card-author">Jawaban</span>
+                                <span class="card-time">10:21</span>
+                            </div>
+                            <div class="card-body">
+                                <p>Undang-Undang Nomor 8 Tahun 1981 tentang Hukum Acara Pidana dirancang untuk memastikan proses peradilan pidana yang adil...</p>
+                                <button class="btn-read-full" onclick="document.querySelector('.analysis-tab[data-atab=jawaban]').click()">Lihat Jawaban Lengkap</button>
+                            </div>
+
+                            <div class="card-sources">
+                                <div class="sources-label">Sumber</div>
+                                <div class="sources-list" id="chatSourcesList">
+                                    <div class="source-item" onclick="jumpToPDFPage(3, 'Pasal 9')">
+                                        <div class="src-left">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                                            <div class="src-info">
+                                                <span class="src-title">Pasal 9</span>
+                                                <span class="src-sub">Halaman 3</span>
+                                            </div>
+                                        </div>
+                                        <span class="src-badge">98%</span>
+                                    </div>
+
+                                    <div class="source-item" onclick="jumpToPDFPage(3, 'Pasal 10')">
+                                        <div class="src-left">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                                            <div class="src-info">
+                                                <span class="src-title">Pasal 10</span>
+                                                <span class="src-sub">Halaman 3</span>
+                                            </div>
+                                        </div>
+                                        <span class="src-badge">96%</span>
+                                    </div>
+
+                                    <div class="source-item" onclick="jumpToPDFPage(4, 'Pasal 12')">
+                                        <div class="src-left">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                                            <div class="src-info">
+                                                <span class="src-title">Pasal 12</span>
+                                                <span class="src-sub">Halaman 4</span>
+                                            </div>
+                                        </div>
+                                        <span class="src-badge">95%</span>
+                                    </div>
+
+                                    <div class="source-item" onclick="jumpToPDFPage(4, 'Pasal 16')">
+                                        <div class="src-left">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                                            <div class="src-info">
+                                                <span class="src-title">Pasal 16–17</span>
+                                                <span class="src-sub">Halaman 4</span>
+                                            </div>
+                                        </div>
+                                        <span class="src-badge">93%</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- BOTTOM CHAT INPUT AREA -->
+                    <div class="assistant-input-container">
+                        <form class="chat-input-box" id="chatForm">
+                            <textarea id="chatInput" class="chat-textarea" placeholder="Ketik pertanyaan Anda..." rows="1" autocomplete="off"></textarea>
+                            <button type="submit" class="btn-send-plane" id="btnSendChat" title="Kirim Pertanyaan (Enter)">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                                </svg>
+                            </button>
+                        </form>
+                        <div class="chat-helper-tip">
+                            Tips: Gunakan @ untuk merujuk pasal tertentu
+                        </div>
+                    </div>
+                </section>
+            </main>
+
+            <!-- RIGHT NAVIGATION RAIL -->
+            <nav class="right-nav-rail">
+                <div class="rail-top">
+                    <button class="rail-item active" id="railTabChat" title="AI Chat & Assistant">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                        <span>Chat</span>
+                    </button>
+                    <button class="rail-item" id="railTabHistory" onclick="document.getElementById('btnToggleInspector').click()" title="Riwayat Pertanyaan & Metrik">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
+                        <span>Riwayat</span>
+                    </button>
+                    <button class="rail-item" id="railTabDocs" onclick="document.getElementById('docSelect').focus()" title="Daftar Dokumen Tim">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                        <span>Dokumen</span>
+                    </button>
+                    <button class="rail-item" id="railTabSettings" title="Pengaturan & Tema">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                        <span>Pengaturan</span>
                     </button>
                 </div>
-
-                <div class="pdf-canvas-container" id="pdfCanvasContainer">
-                    <div class="pdf-loading-overlay" id="pdfLoading" style="display: none;">
-                        <div class="spinner"></div>
-                        <p id="pdfLoadingText">Rendering Page...</p>
-                    </div>
-                    <img id="pdfPageImage" class="pdf-image" alt="Rendered Page" style="display: none;">
-                    <div id="pdfPlaceholder" class="pdf-placeholder">
-                        <div class="placeholder-icon">📄</div>
-                        <p>Pilih dokumen atau klik <strong>"Download HF Row 4"</strong> untuk memulai</p>
-                    </div>
-                </div>
-            </section>
-
-            <!-- PANEL 2: HASIL OCR & STRUCTURE INSPECTOR -->
-            <section class="panel panel-ocr">
-                <div class="panel-header">
-                    <div class="panel-title">
-                        <span class="icon">🔍</span>
-                        <h2>Hasil OCR & Inspector</h2>
-                    </div>
-                    <div class="cache-badge-wrapper">
-                        <span class="cache-badge" id="ocrCacheBadge" style="display:none;">⚡ Local Cache (0 Cost)</span>
-                    </div>
-                </div>
-
-                <div class="tab-header">
-                    <button class="tab-btn active" data-tab="tab-structured">Structured JSON</button>
-                    <button class="tab-btn" data-tab="tab-raw">Raw OCR Text</button>
-                    <button class="tab-btn" data-tab="tab-meta">Metadata & Tokens</button>
-                </div>
-
-                <div class="tab-content-container">
-                    <!-- Tab Structured -->
-                    <div class="tab-pane active" id="tab-structured">
-                        <div class="structured-view" id="structuredView">
-                            <div class="empty-state">
-                                <span class="empty-icon">🧩</span>
-                                <p>Klik <strong>"Ekstrak OCR"</strong> untuk memproses teks & struktur JSON melalui subagent</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Tab Raw Text -->
-                    <div class="tab-pane" id="tab-raw">
-                        <div class="raw-text-toolbar">
-                            <span class="raw-stats" id="rawStats">0 Karakter | 0 Baris</span>
-                            <button class="btn-copy" id="btnCopyRaw">📋 Copy Text</button>
-                        </div>
-                        <textarea id="rawTextOutput" class="raw-text-area" readonly placeholder="Hasil raw text dari model ocr-lighton akan muncul di sini..."></textarea>
-                    </div>
-
-                    <!-- Tab Metadata -->
-                    <div class="tab-pane" id="tab-meta">
-                        <div class="meta-grid" id="metaGrid">
-                            <div class="meta-card">
-                                <span class="meta-label">Model OCR</span>
-                                <span class="meta-val" id="metaModel">ocr-lighton</span>
-                            </div>
-                            <div class="meta-card">
-                                <span class="meta-label">Image SHA-256 Hash</span>
-                                <span class="meta-val hash-val" id="metaHash">-</span>
-                            </div>
-                            <div class="meta-card">
-                                <span class="meta-label">Status Kuota</span>
-                                <span class="meta-val" id="metaCacheStatus">-</span>
-                            </div>
-                            <div class="meta-card">
-                                <span class="meta-label">Estimasi Token</span>
-                                <span class="meta-val" id="metaTokens">0 Tokens</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- PANEL 3: INTERACTIVE SUBAGENT CHAT -->
-            <section class="panel panel-chat">
-                <div class="panel-header">
-                    <div class="panel-title">
-                        <span class="icon">💬</span>
-                        <h2>Subagent Chat</h2>
-                    </div>
-                    <div class="chat-model-select">
-                        <select id="chatModelSelect" class="select-input select-sm">
-                            <option value="qwen-35b">qwen-35b (Reasoning)</option>
-                            <option value="nemotron-35">nemotron-35 (Fast)</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="chat-messages" id="chatMessages">
-                    <div class="chat-message message-system">
-                        <div class="message-bubble">
-                            👋 Halo! Saya asisten subagent dokumen Anda. Tanyakan apa saja mengenai isi dokumen/PDF yang sedang dibuka.
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Quick Prompts -->
-                <div class="quick-prompts">
-                    <button class="quick-btn" data-prompt="Rangkum isi dokumen ini secara singkat dan jelas.">📝 Rangkum</button>
-                    <button class="quick-btn" data-prompt="Sebutkan semua entitas, tanggal, dan nomor referensi penting.">📌 Entitas Penting</button>
-                    <button class="quick-btn" data-prompt="Apakah ada angka total, biaya, atau nominal penting di dokumen ini?">💰 Cek Biaya/Total</button>
-                </div>
-
-                <!-- Chat Input Area -->
-                <form class="chat-input-form" id="chatForm">
-                    <input type="text" id="chatInput" class="chat-input" placeholder="Ketik pertanyaan terkait dokumen..." autocomplete="off">
-                    <button type="submit" class="btn btn-primary btn-send" id="btnSendChat">
-                        <span>Kirim</span> ➔
+                <div class="rail-bottom">
+                    <button class="rail-item" id="railTabHelp" onclick="document.getElementById('btnToggleInspector').click()" title="Bantuan & Diagnostik Sistem">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                        <span>Bantuan</span>
                     </button>
-                </form>
-            </section>
-        </main>
+                </div>
+            </nav>
+        </div>
+
+        <!-- SLIDE-OVER TECHNICAL INSPECTOR (PROGRESSIVE DISCLOSURE) -->
+        <aside class="inspector-drawer" id="inspectorDrawer">
+            <div class="inspector-header">
+                <div class="drawer-title">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                    <h3>Technical Inspector</h3>
+                </div>
+                <button class="btn-close-drawer" id="btnCloseInspector" title="Tutup Inspector">✕</button>
+            </div>
+
+            <div class="inspector-tabs">
+                <button class="itb active" data-itb="itb-structure">Structured JSON</button>
+                <button class="itb" data-itb="itb-raw">Raw OCR</button>
+                <button class="itb" data-itb="itb-analytics">Metrik & Biaya</button>
+                <button class="itb" data-itb="itb-diag">Diagnostics</button>
+            </div>
+
+            <div class="inspector-body">
+                <div class="itb-pane active" id="itb-structure">
+                    <div class="code-action-bar">
+                        <span class="code-title">Pydantic Parsed Output</span>
+                        <button class="btn-copy-code" id="btnCopyJSON">📋 Copy JSON</button>
+                    </div>
+                    <pre class="json-code-view" id="inspectorJSONViewer">{\n  "status": "Ready",\n  "document_type": "Government Statutory Document",\n  "document_title": "Undang-Undang Nomor 8 Tahun 1981"\n}</pre>
+                </div>
+
+                <div class="itb-pane" id="itb-raw">
+                    <div class="code-action-bar">
+                        <span class="code-title" id="rawCharStats">0 Karakter</span>
+                        <button class="btn-copy-code" id="btnCopyRaw">📋 Copy Raw</button>
+                    </div>
+                    <textarea class="raw-ocr-textarea" id="inspectorRawText" readonly></textarea>
+                </div>
+
+                <div class="itb-pane" id="itb-analytics">
+                    <div class="analytics-scorecard">
+                        <div class="score-card">
+                            <span class="s-label">Retrieval Latency</span>
+                            <span class="s-val" id="inspLatency">0.8 ms</span>
+                        </div>
+                        <div class="score-card">
+                            <span class="s-label">Tokens Saved</span>
+                            <span class="s-val" id="inspTokens">95.0%</span>
+                        </div>
+                        <div class="score-card">
+                            <span class="s-label">Estimated Cost</span>
+                            <span class="s-val" id="inspCost">$0.0003</span>
+                        </div>
+                        <div class="score-card">
+                            <span class="s-label">Cache Status</span>
+                            <span class="s-val" id="inspCache">In-Memory Active</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="itb-pane" id="itb-diag">
+                    <div class="diag-list">
+                        <div class="diag-item">
+                            <span class="d-key">Team Shared Shield:</span>
+                            <span class="d-val" id="diagShield">7-Person Mode Active</span>
+                        </div>
+                        <div class="diag-item">
+                            <span class="d-key">Rate Limit Cooldown:</span>
+                            <span class="d-val" id="diagCooldown">Ready (30s interval)</span>
+                        </div>
+                        <div class="diag-item">
+                            <span class="d-key">Active Concurrency:</span>
+                            <span class="d-val" id="diagSlots">0 / 1 slot</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- THEME SWITCHER & SETTINGS MODAL -->
+        <div class="modal-backdrop" id="themeModalBackdrop" style="display:none;">
+            <div class="settings-modal">
+                <div class="modal-header">
+                    <div class="m-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+                        <h3>Pilihan Tema Tampilan</h3>
+                    </div>
+                    <button class="btn-close-modal" id="btnCloseThemeModal">✕</button>
+                </div>
+                
+                <p class="modal-desc">Pilih tema warna yang paling nyaman untuk sesi membaca dokumen jangka panjang.</p>
+
+                <div class="theme-options-grid">
+                    <!-- Option 1: Sage Green -->
+                    <div class="theme-card" data-theme-val="sage">
+                        <div class="theme-preview-box preview-sage">
+                            <div class="p-nav"></div>
+                        </div>
+                        <div class="theme-info">
+                            <div class="theme-radio-row">
+                                <span class="theme-radio-dot"></span>
+                                <strong>Sage Green (Rekomendasi)</strong>
+                            </div>
+                            <p>Fokus, tenang, dan natural untuk dokumen hukum.</p>
+                        </div>
+                    </div>
+
+                    <!-- Option 2: Claude -->
+                    <div class="theme-card" data-theme-val="claude">
+                        <div class="theme-preview-box preview-claude">
+                            <div class="p-nav"></div>
+                        </div>
+                        <div class="theme-info">
+                            <div class="theme-radio-row">
+                                <span class="theme-radio-dot"></span>
+                                <strong>Claude (Anthropic Warm)</strong>
+                            </div>
+                            <p>Warm editorial minimalis dengan kontras lembut.</p>
+                        </div>
+                    </div>
+
+                    <!-- Option 3: ChatGPT Dark -->
+                    <div class="theme-card" data-theme-val="dark">
+                        <div class="theme-preview-box preview-dark">
+                            <div class="p-nav"></div>
+                        </div>
+                        <div class="theme-info">
+                            <div class="theme-radio-row">
+                                <span class="theme-radio-dot"></span>
+                                <strong>ChatGPT Dark</strong>
+                            </div>
+                            <p>Mode gelap modern tanpa silau dan tanpa neon.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn-primary-modal" id="btnSaveTheme">Terapkan Tema</button>
+                </div>
+            </div>
+        </div>
+
     </div>
 
     <script src="app.js"></script>

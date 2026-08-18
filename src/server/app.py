@@ -127,48 +127,200 @@ async def run_ocr_pipeline(filename: str, page_number: int = Form(1), auto_struc
         logger.error(f"Error in OCR pipeline: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
+from src.pipeline.schemas import ChatRequest, ChatResponse, CitationItem, RAGQueryRequest, RAGQueryResponse
+from src.rag.hybrid_retriever import hybrid_retriever
+
+
+@app.post("/api/rag/index/{filename}")
+async def index_document_rag(filename: str, background_tasks: BackgroundTasks):
+    """Trigger background or immediate indexing for a document."""
+    file_path = settings.PDF_DIR / filename
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="File not found")
+    
+    doc_index = hybrid_retriever.index_document(file_path)
+    return {
+        "status": "success",
+        "filename": filename,
+        "total_chunks": len(doc_index.chunks)
+    }
+
+@app.get("/api/rag/status/{filename}")
+async def get_rag_status(filename: str):
+    """Check if a document is indexed in the Hybrid RAG engine."""
+    file_path = settings.PDF_DIR / filename
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="File not found")
+    return hybrid_retriever.get_index_stats(filename)
+
+@app.post("/api/rag/query", response_model=RAGQueryResponse)
+async def query_rag_chunks(request: RAGQueryRequest):
+    """Retrieve top relevant chunks from a document without invoking the chat LLM."""
+    file_path = settings.PDF_DIR / request.filename
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="File not found")
+
+    mode = request.mode if request.mode in ["hybrid", "dense", "bm25"] else "hybrid"
+    res = hybrid_retriever.retrieve(file_path, request.query, mode=mode, top_k=request.top_k or 4)
+    
+    citations = [
+        CitationItem(
+            chunk_id=c.chunk_id,
+            page_number=c.page_number,
+            text_snippet=c.text_snippet,
+            score=c.score,
+            method=c.method,
+            section_title=c.section_title
+        )
+        for c in res.citations
+    ]
+    return RAGQueryResponse(
+        query=res.query,
+        filename=res.filename,
+        mode=res.mode,
+        execution_time_ms=res.execution_time_ms,
+        total_indexed_chunks=res.total_indexed_chunks,
+        citations=citations,
+        combined_context=res.combined_context
+    )
+
+@app.post("/api/rag/compare")
+async def compare_rag_retrieval(filename: str = Form(...), query: str = Form(...), top_k: int = Form(3)):
+    """Run side-by-side comparison across BM25, Dense Vector, and Hybrid RRF."""
+    file_path = settings.PDF_DIR / filename
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="File not found")
+    
+    return hybrid_retriever.compare_modes(file_path, query, top_k=top_k)
+
+@app.get("/api/benchmark/metrics")
+async def get_benchmark_metrics():
+    """Retrieve precomputed performance benchmarks between System A and System B."""
+    results_path = settings.BASE_DIR / "data" / "benchmark_results.json"
+    if results_path.exists():
+        import json
+        with open(results_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {"status": "pending", "message": "Benchmark not executed yet."}
+
+
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat_with_document(request: ChatRequest):
-    """Interactive document Q&A subagent."""
+    """Interactive document Q&A subagent with selectable retrieval mode (OCR, Dense RAG, Hybrid RAG, Compare)."""
     file_path = settings.PDF_DIR / request.pdf_name
     if not file_path.exists():
         raise HTTPException(status_code=404, detail=f"Dokumen '{request.pdf_name}' tidak ditemukan.")
 
-    doc_text = ""
-    try:
-        if request.pdf_name.lower().endswith(".pdf"):
-            # Render page and check cache first
-            pil_img = render_pdf_page_to_image(file_path, page_number=request.page_number, scale=1.5)
-            img_hash = get_image_hash(pil_img)
-            cached = local_cache.get(img_hash)
-            if cached and cached.get("raw_text"):
-                doc_text = cached["raw_text"]
+    retrieval_mode = request.retrieval_mode or "ocr"
+    citations: List[CitationItem] = []
+    comparison_data = None
+    doc_context = ""
+
+    # Extract user's latest query
+    user_query = ""
+    for msg in reversed(request.messages):
+        if msg.role == "user":
+            user_query = msg.content
+            break
+
+    if retrieval_mode == "ocr":
+        # Mode 1: Single-page OCR Context
+        try:
+            if request.pdf_name.lower().endswith(".pdf"):
+                pil_img = render_pdf_page_to_image(file_path, page_number=request.page_number, scale=1.5)
+                img_hash = get_image_hash(pil_img)
+                cached = local_cache.get(img_hash)
+                if cached and cached.get("raw_text"):
+                    doc_context = cached["raw_text"]
+                else:
+                    ocr_res = await orchestrator.process_pdf_page(file_path, page_number=request.page_number, auto_structure=False)
+                    doc_context = ocr_res.get("raw_text", "")
             else:
-                ocr_res = await orchestrator.process_pdf_page(file_path, page_number=request.page_number, auto_structure=False)
-                doc_text = ocr_res.get("raw_text", "")
-        else:
-            img_hash = get_image_hash(file_path)
-            cached = local_cache.get(img_hash)
-            if cached and cached.get("raw_text"):
-                doc_text = cached["raw_text"]
-            else:
-                ocr_res = await orchestrator.process_image_file(file_path, auto_structure=False)
-                doc_text = ocr_res.get("raw_text", "")
-    except Exception as e:
-        logger.warning(f"Could not retrieve OCR context: {e}")
-        doc_text = "[No OCR text available for this document]"
+                img_hash = get_image_hash(file_path)
+                cached = local_cache.get(img_hash)
+                if cached and cached.get("raw_text"):
+                    doc_context = cached["raw_text"]
+                else:
+                    ocr_res = await orchestrator.process_image_file(file_path, auto_structure=False)
+                    doc_context = ocr_res.get("raw_text", "")
+            
+            citations.append(
+                CitationItem(
+                    chunk_id=f"{request.pdf_name}_p{request.page_number}_active",
+                    page_number=request.page_number,
+                    text_snippet=doc_context[:300] + "...",
+                    score=1.0,
+                    method="Direct OCR (Page Active)"
+                )
+            )
+        except Exception as e:
+            logger.warning(f"Could not retrieve OCR context: {e}")
+            doc_context = "[No OCR text available for this document]"
+
+    elif retrieval_mode == "agentic_graph":
+        from src.rag.agentic_graph_rag import agentic_graph_rag
+        graph_res = agentic_graph_rag.execute_agentic_pipeline(file_path, user_query, top_k=4)
+        doc_context = graph_res.final_grounded_context
+        citations = [
+            CitationItem(
+                chunk_id=c.chunk_id,
+                page_number=c.page_number,
+                text_snippet=c.text_snippet,
+                score=c.score,
+                method="Agentic GraphRAG",
+                section_title=c.section_title
+            )
+            for c in graph_res.retrieval_citations
+        ]
+
+    elif retrieval_mode in ["dense_rag", "hybrid_rag"]:
+        # Mode 2 or 3: Dense RAG or Hybrid RAG across all pages
+        mode_key = "dense" if retrieval_mode == "dense_rag" else "hybrid"
+        rag_res = hybrid_retriever.retrieve(file_path, user_query, mode=mode_key, top_k=4)
+        doc_context = rag_res.combined_context
+        citations = [
+            CitationItem(
+                chunk_id=c.chunk_id,
+                page_number=c.page_number,
+                text_snippet=c.text_snippet,
+                score=c.score,
+                method=c.method,
+                section_title=c.section_title
+            )
+            for c in rag_res.citations
+        ]
+
+    elif retrieval_mode == "compare":
+        # Mode 4: Compare side-by-side
+        comparison_data = hybrid_retriever.compare_modes(file_path, user_query, top_k=3)
+        rag_res = hybrid_retriever.retrieve(file_path, user_query, mode="hybrid", top_k=4)
+        doc_context = rag_res.combined_context
+        citations = [
+            CitationItem(
+                chunk_id=c.chunk_id,
+                page_number=c.page_number,
+                text_snippet=c.text_snippet,
+                score=c.score,
+                method=c.method,
+                section_title=c.section_title
+            )
+            for c in rag_res.citations
+        ]
 
     try:
         chat_res = await chat_agent.process(
             messages=[{"role": m.role, "content": m.content} for m in request.messages],
-            document_text=doc_text,
+            document_text=doc_context,
             model_override=request.model
         )
 
         return ChatResponse(
             reply=chat_res["reply"],
             model_used=chat_res["model_used"],
-            tokens_used=chat_res.get("tokens_used", 0)
+            tokens_used=chat_res.get("tokens_used", 0),
+            retrieval_mode=retrieval_mode,
+            citations=citations,
+            comparison_data=comparison_data
         )
     except Exception as e:
         logger.error(f"Error in chat agent: {e}", exc_info=True)
@@ -179,3 +331,4 @@ async def chat_with_document(request: ChatRequest):
 web_dir = settings.BASE_DIR / "web"
 web_dir.mkdir(parents=True, exist_ok=True)
 app.mount("/", StaticFiles(directory=str(web_dir), html=True), name="static")
+

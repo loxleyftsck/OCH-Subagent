@@ -6,45 +6,76 @@ from src.config import settings
 
 logger = logging.getLogger("chat_agent")
 
+import re
+
 def clean_reasoning_text(text: str) -> str:
     """Filter out internal model chain-of-thought traces so the response is clean and human-friendly."""
     if not text:
         return ""
     
     # 1. Remove <think>...</think> blocks
-    if "<think>" in text and "</think>" in text:
-        text = text.split("</think>")[-1].strip()
+    if "<think>" in text:
+        if "</think>" in text:
+            text = text.split("</think>")[-1].strip()
+        else:
+            # If think was truncated without closing tag
+            text = re.sub(r"<think>[\s\S]*", "", text).strip()
     
-    # 2. If it leaked thinking process text
-    if "Here's a thinking process:" in text or "Thinking Process:" in text:
-        # Check if there is a Draft / Output section
-        for marker in ["Draft:", "Draft Response:", "Output:", "Final Answer:", "Answer:"]:
+    # 2. Check if thinking process keywords exist
+    thinking_indicators = [
+        "Here's a thinking process:",
+        "Thinking Process:",
+        "1. **Analyze User Input",
+        "1. **Analyze User Input:**",
+        "**Analyze User Input**",
+        "1.  **Analyze User Input"
+    ]
+    
+    has_thinking = any(ind in text for ind in thinking_indicators)
+    
+    if has_thinking:
+        # Check if an explicit Draft / Output / Final Answer section exists
+        draft_markers = [
+            "Draft:",
+            "Draft Response:",
+            "Output:",
+            "Final Answer:",
+            "Answer:",
+            "Formulate Response (Internal Refinement - Indonesian):",
+            "Formulate Response (in Indonesian, matching user's language):",
+            "Formulate Response:"
+        ]
+        
+        for marker in draft_markers:
             if marker in text:
                 parts = text.split(marker)
                 candidate = parts[-1].strip()
-                # Remove any self-correction trailing section if present
-                if "**Self-Correction" in candidate:
-                    candidate = candidate.split("**Self-Correction")[0].strip()
-                if "Self-Correction:" in candidate:
-                    candidate = candidate.split("Self-Correction:")[0].strip()
-                if len(candidate) > 20:
+                # Remove any trailing self-correction or verification notes
+                for end_marker in ["5. **Self-Correction", "Self-Correction/Verification", "**Self-Correction", "Self-Correction:"]:
+                    if end_marker in candidate:
+                        candidate = candidate.split(end_marker)[0].strip()
+                if len(candidate) > 15:
                     return candidate
 
-        # If thinking process took the whole message without explicit marker
+        # Fallback line-by-line filtering: remove thought lines
         lines = text.split("\n")
-        cleaned_lines = []
-        skip = False
-        for line in lines:
-            if line.strip().startswith(("1. **Analyze", "2. **Identify", "3. **Perform", "4. **Formulate", "5. **Self-Correction", "**Analyze", "**Identify")):
-                skip = True
-            elif line.strip().startswith(("Berdasarkan", "Total", "Halo", "Untuk", "Berikut")):
-                skip = False
-            
-            if not skip and line.strip():
-                cleaned_lines.append(line)
+        filtered_lines = []
+        is_in_thought = False
         
-        if cleaned_lines:
-            return "\n".join(cleaned_lines).strip()
+        for line in lines:
+            trimmed = line.strip()
+            # If line starts with thinking step
+            if re.match(r"^\d+\.\s+\*\*(Analyze|Extract|Perform|Formulate|Self-Correction|Identify)", trimmed) or \
+               trimmed.startswith(("Here's a thinking process", "Thinking Process:", "- Language:", "- Question:", "- Key tasks:", "Prices:", "- Note:", "Most expensive:", "Cheapest:", "Sum:")):
+                is_in_thought = True
+            elif trimmed.startswith(("Berdasarkan", "Halo", "Untuk", "Total", "Berikut", "Barang", "Item")):
+                is_in_thought = False
+            
+            if not is_in_thought and trimmed:
+                filtered_lines.append(line)
+        
+        if filtered_lines:
+            return "\n".join(filtered_lines).strip()
 
     return text.strip()
 
@@ -64,27 +95,40 @@ class ChatAgent(BaseSubagent):
         target_model = model_override or self.model
         logger.info(f"🤖 [{self.name}] Processing chat query with model {target_model}...")
 
+        # Remove any error or system logs that might have leaked into user history
+        cleaned_messages = []
+        for msg in messages:
+            content = msg["content"]
+            # Clean if error message was accidentally appended
+            if "⚠️ Terjadi kendala:" in content:
+                content = content.split("⚠️ Terjadi kendala:")[0].strip()
+            if content:
+                cleaned_messages.append({"role": msg["role"], "content": content})
+
+        retrieval_mode_label = "Hybrid RAG (BM25 + Dense Vector + RRF)" if "hybrid" in str(model_override or "") else "Document Context"
+        
         system_instruction = (
-            "You are an intelligent, friendly Document Assistant Subagent. You have direct access to the extracted OCR text "
-            "and structured metadata of the user's active document.\n\n"
-            "=== DOCUMENT CONTEXT ===\n"
+            "You are an intelligent, polite, and helpful Document Assistant Subagent. You have direct access to the extracted "
+            "document text and relevant context chunks.\n\n"
+            "=== DOCUMENT RETRIEVAL CONTEXT ===\n"
             f"{document_text}\n"
-            "========================\n"
-            "INSTRUCTIONS:\n"
-            "- Answer the user's question directly, politely, and clearly in the same language as the user (e.g. Indonesian).\n"
-            "- Present calculations with clean bullet points and clear totals.\n"
-            "- NEVER include internal thinking logs (like 'Thinking Process:', '1. Analyze User Input') in your final output.\n"
-            "- Output ONLY the final conversational response meant for the human user."
+            "==================================\n"
+            "IMPORTANT RULES:\n"
+            "1. Answer the user's question directly, clearly, and politely in Indonesian (or the language asked).\n"
+            "2. Always cite specific page numbers (e.g. `[Halaman X]` or `[Pasal Y, Halaman X]`) when referencing information from the document.\n"
+            "3. If the context contains multiple pages or sections, synthesize the answer comprehensively.\n"
+            "4. Provide accurate calculations step-by-step with clean markdown bullet points.\n"
+            "5. DO NOT output any internal thinking steps, chain-of-thought logs, or 'Here's a thinking process:'. Output ONLY the final user-facing response."
         )
 
         formatted_messages = [{"role": "system", "content": system_instruction}]
-        for msg in messages:
+        for msg in cleaned_messages:
             formatted_messages.append({"role": msg["role"], "content": msg["content"]})
 
         response = await base_client.post_chat_completion(
             model=target_model,
             messages=formatted_messages,
-            max_tokens=1500,
+            max_tokens=2000,
             temperature=0.2,
             is_ocr=False
         )
@@ -100,4 +144,5 @@ class ChatAgent(BaseSubagent):
         }
 
 chat_agent = ChatAgent()
+
 

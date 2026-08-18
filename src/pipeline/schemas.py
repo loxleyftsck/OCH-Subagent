@@ -40,6 +40,14 @@ class DocumentAnalysisSchema(BaseModel):
     key_entities: Dict[str, Any] = Field(default_factory=dict, description="Key extracted fields, line items, or amounts")
     summary: str = Field(description="Concise 2-3 sentence summary of document contents")
 
+class CitationItem(BaseModel):
+    chunk_id: str
+    page_number: int
+    text_snippet: str
+    score: float
+    method: str
+    section_title: Optional[str] = None
+
 class ChatMessage(BaseModel):
     role: str # "user" | "assistant" | "system"
     content: str
@@ -49,8 +57,28 @@ class ChatRequest(BaseModel):
     page_number: int = 1
     messages: List[ChatMessage]
     model: Optional[str] = None
+    retrieval_mode: Optional[str] = "ocr"  # "ocr", "dense_rag", "hybrid_rag", "compare"
 
 class ChatResponse(BaseModel):
     reply: str
     model_used: str
     tokens_used: int = 0
+    retrieval_mode: str = "ocr"
+    citations: List[CitationItem] = Field(default_factory=list)
+    comparison_data: Optional[Dict[str, Any]] = None
+
+class RAGQueryRequest(BaseModel):
+    filename: str
+    query: str
+    mode: Optional[str] = "hybrid"  # "hybrid", "dense", "bm25"
+    top_k: Optional[int] = 4
+
+class RAGQueryResponse(BaseModel):
+    query: str
+    filename: str
+    mode: str
+    execution_time_ms: float
+    total_indexed_chunks: int
+    citations: List[CitationItem]
+    combined_context: str
+

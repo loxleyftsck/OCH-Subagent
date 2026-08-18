@@ -1,7 +1,13 @@
 import asyncio
 import time
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from src.limiter.rate_limiter import SharedRateLimiter
 from src.config import settings
+
 
 async def test_rate_limiter_concurrency():
     limiter = SharedRateLimiter()

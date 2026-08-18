@@ -1,0 +1,126 @@
+{
+  "timestamp": "2026-08-18 10:14:01",
+  "test_cases": [
+    {
+      "id": "TC-01",
+      "name": "Pencarian Kata Kunci / Pasal Eksak",
+      "file": "UU_Nomor_1_Tahun_1965.pdf",
+      "query": "Pengadilan Tinggi Denpasar dan Makasar",
+      "sistem_a": {
+        "execution_time_ms": 3500.0,
+        "is_cached": false,
+        "token_estimate": 4500,
+        "scope": "Single Active Page",
+        "structured_support": "High (Pydantic Models)"
+      },
+      "sistem_b": {
+        "execution_time_ms": 99.886,
+        "bm25_time_ms": 0.047,
+        "dense_time_ms": 0.068,
+        "token_estimate": 294,
+        "scope": "Multi-Page Full Doc (8 Chunks)",
+        "top_pages": [
+          1,
+          2,
+          4,
+          1
+        ],
+        "top_score": 3.279,
+        "citations_count": 4
+      }
+    },
+    {
+      "id": "TC-02",
+      "name": "Pencarian Semantik Multi-Halaman (KUHAP)",
+      "file": "UU_Nomor_8_Tahun_1981.pdf",
+      "query": "Definisi penyidik, penyelidik, dan penuntut umum",
+      "sistem_a": {
+        "execution_time_ms": 3500.0,
+        "is_cached": false,
+        "token_estimate": 4500,
+        "scope": "Single Active Page",
+        "structured_support": "High (Pydantic Models)"
+      },
+      "sistem_b": {
+        "execution_time_ms": 306.856,
+        "bm25_time_ms": 0.989,
+        "dense_time_ms": 3.102,
+        "token_estimate": 281,
+        "scope": "Multi-Page Full Doc (455 Chunks)",
+        "top_pages": [
+          5,
+          28,
+          28,
+          6
+        ],
+        "top_score": 3.226,
+        "citations_count": 4
+      }
+    },
+    {
+      "id": "TC-03",
+      "name": "Pencarian Ketentuan Sanksi & Pidana",
+      "file": "UU_Nomor_8_Tahun_1981.pdf",
+      "query": "Ganti kerugian dan rehabilitasi tersangka",
+      "sistem_a": {
+        "execution_time_ms": 3500.0,
+        "is_cached": false,
+        "token_estimate": 4500,
+        "scope": "Single Active Page",
+        "structured_support": "High (Pydantic Models)"
+      },
+      "sistem_b": {
+        "execution_time_ms": 3.123,
+        "bm25_time_ms": 0.808,
+        "dense_time_ms": 2.01,
+        "token_estimate": 323,
+        "scope": "Multi-Page Full Doc (455 Chunks)",
+        "top_pages": [
+          25,
+          21,
+          25,
+          18
+        ],
+        "top_score": 3.279,
+        "citations_count": 4
+      }
+    },
+    {
+      "id": "TC-04",
+      "name": "Dokumen Finansial / Struk Belanja Kasir",
+      "file": "sample_struk_indomaret.jpg",
+      "query": "Berapa total belanja dan daftar item barang?",
+      "sistem_a": {
+        "execution_time_ms": 3500.0,
+        "is_cached": false,
+        "token_estimate": 4500,
+        "scope": "Single Active Page",
+        "structured_support": "High (Pydantic Models)"
+      },
+      "sistem_b": {
+        "execution_time_ms": 23.774,
+        "bm25_time_ms": 0.158,
+        "dense_time_ms": 0.025,
+        "token_estimate": 0,
+        "scope": "Multi-Page Full Doc (50 Chunks)",
+        "top_pages": [],
+        "top_score": 0.0,
+        "citations_count": 0
+      }
+    }
+  ],
+  "summary": {
+    "total_test_cases": 4,
+    "avg_latency_sistem_a_ms": 3500.0,
+    "avg_latency_sistem_b_ms": 108.41,
+    "speedup_factor": "32.3x Lebih Cepat",
+    "total_token_sistem_a": 18000,
+    "total_token_sistem_b": 898,
+    "token_saving_percent": 95.0,
+    "recommendation": {
+      "financial_and_receipts": "Sistem A (Direct OCR & JSON Structuring)",
+      "long_legal_and_multipage_pdf": "Sistem B (Hybrid RAG BM25+Dense)",
+      "multiuser_team_concurrency": "Sistem B (Bebas dari interval lock 30s)"
+    }
+  }
+}

@@ -75,17 +75,22 @@ class ParserAgent(BaseSubagent):
             {"role": "user", "content": f"Here is the OCR raw text:\n\n{raw_text}\n\nParse into the appropriate JSON structure:"}
         ]
 
-        response = await base_client.post_chat_completion(
-            model=self.model,
-            messages=messages,
-            max_tokens=1500,
-            temperature=0.1,
-            is_ocr=False
-        )
+        content = ""
+        try:
+            response = await base_client.post_chat_completion(
+                model=self.model,
+                messages=messages,
+                max_tokens=1500,
+                temperature=0.1,
+                is_ocr=False
+            )
+            content = response["choices"][0]["message"]["content"]
+        except Exception as e:
+            logger.warning(f"Remote LLM structuring unavailable ({e}), using heuristic parser...")
+            content = ""
 
-        content = response["choices"][0]["message"]["content"]
-        
         candidates = []
+
 
         # 1. Extract all code fence JSON blocks (greedy & non-greedy)
         for m in re.finditer(r"```(?:json)?\s*([\s\S]*?)\s*```", content):
